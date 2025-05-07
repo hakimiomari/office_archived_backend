@@ -8,7 +8,7 @@ import { CreateUserDto } from "./dto/CreateUserDto.dot";
 import { PrismaService } from "src/prisma/prisma.service";
 import * as bcrypt from "bcrypt";
 import { JwtService } from "@nestjs/jwt";
-import { Response } from "express";
+import { Request, Response } from "express";
 
 interface Tokens {
   access_token: string;
@@ -98,6 +98,44 @@ export class AuthService {
         refresh_token,
       },
     });
+  }
+
+  // update refresh token
+  async refreshToken(request: Request, response: Response) {
+    const refresh_token = request.cookies["refresh_token"];
+    if (!refresh_token) {
+      throw new NotFoundException("Refresh token not found");
+    }
+
+    const { sub, email } = await this.jwtService.verifyAsync(refresh_token, {
+      secret: process.env.REFRESH_TOKEN_KEY,
+    });
+
+    const user = await this.prisma.users.findUnique({
+      where: {
+        email: email,
+      },
+    });
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+    const { access_token, refresh_token: new_refresh_token } =
+      await this.getTokens(user.id, user.email);
+
+    // update refresh token
+    this.updateRefreshToken(user.id, new_refresh_token);
+
+    response.cookie("refresh_token", new_refresh_token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "strict",
+      maxAge: 1000 * 60 * 60 * 24 * 15,
+      path: "/",
+    });
+
+    return {
+      access_token,
+    };
   }
 
   async hashedPassword(password: string) {
