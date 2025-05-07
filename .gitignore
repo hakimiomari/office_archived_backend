@@ -1,0 +1,24 @@
+# Node.js
+node_modules/
+dist/
+*.log
+.env
+.env.*
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Optional IDE files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Jest test coverage
+coverage/
+
+# Compiled TypeScript
+*.tsbuildinfo
