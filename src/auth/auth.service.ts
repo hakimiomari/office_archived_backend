@@ -1,4 +1,8 @@
-import { ConflictException, Injectable } from "@nestjs/common";
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { LoginDto } from "./dto/LoginDto.dto";
 import { CreateUserDto } from "./dto/CreateUserDto.dot";
 import { PrismaService } from "src/prisma/prisma.service";
@@ -18,7 +22,27 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto) {
-    return dto;
+    const user = await this.getUserByEmail(dto.email);
+    if (!user) {
+      throw new NotFoundException("Invalid Credentials");
+    }
+
+    const password = await bcrypt.compare(dto.password, user.password);
+    if (!password) {
+      throw new NotFoundException("Invalid Credentials");
+    }
+
+    const { access_token, refresh_token } = await this.getTokens(
+      user.id,
+      user.email
+    );
+
+    this.updateRefreshToken(user.id, refresh_token);
+
+    return {
+      access_token,
+      refresh_token,
+    };
   }
 
   async register(dto: CreateUserDto) {
