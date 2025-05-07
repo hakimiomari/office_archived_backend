@@ -8,6 +8,7 @@ import { CreateUserDto } from "./dto/CreateUserDto.dot";
 import { PrismaService } from "src/prisma/prisma.service";
 import * as bcrypt from "bcrypt";
 import { JwtService } from "@nestjs/jwt";
+import { Response } from "express";
 
 interface Tokens {
   access_token: string;
@@ -21,7 +22,7 @@ export class AuthService {
     private readonly jwtService: JwtService
   ) {}
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, response: Response) {
     const user = await this.getUserByEmail(dto.email);
     if (!user) {
       throw new NotFoundException("Invalid Credentials");
@@ -39,9 +40,16 @@ export class AuthService {
 
     this.updateRefreshToken(user.id, refresh_token);
 
+    response.cookie("refresh_token", refresh_token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "strict",
+      maxAge: 1000 * 60 * 60 * 24 * 15,
+      path: "/",
+    });
+
     return {
       access_token,
-      refresh_token,
     };
   }
 
