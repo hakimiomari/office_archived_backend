@@ -21,6 +21,7 @@ export class AuthService {
     private prisma: PrismaService,
     private readonly jwtService: JwtService
   ) {}
+  private loggedOutUsers = new Set<string>();
 
   async login(dto: LoginDto, response: Response) {
     const user = await this.getUserByEmail(dto.email);
@@ -161,5 +162,26 @@ export class AuthService {
       ),
     ]);
     return { access_token, refresh_token };
+  }
+
+  // logout
+  async logout(request: Request, response: Response) {
+    const token = await this.extractTokenFromHeader(request);
+    console.log("token", token);
+    // const decode = this.jwtService.decode(response)
+
+    // response.clearCookie("refresh_token");
+
+    return {
+      message: "Logged out successfully",
+    };
+  }
+
+  private extractTokenFromHeader(request: any): string | null {
+    const authHeader = request.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      return authHeader.split(" ")[1]; // Extract token from "Bearer <token>"
+    }
+    return null;
   }
 }
