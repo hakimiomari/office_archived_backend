@@ -107,7 +107,7 @@ export class AuthService {
       throw new NotFoundException("Refresh token not found");
     }
 
-    const { sub, email } = await this.jwtService.verifyAsync(refresh_token, {
+    const { email } = await this.jwtService.verifyAsync(refresh_token, {
       secret: process.env.REFRESH_TOKEN_KEY,
     });
 
