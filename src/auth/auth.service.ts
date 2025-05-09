@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { LoginDto } from "./dto/LoginDto.dto";
 import { CreateUserDto } from "./dto/CreateUserDto.dot";
@@ -9,6 +10,7 @@ import { PrismaService } from "src/prisma/prisma.service";
 import * as bcrypt from "bcrypt";
 import { JwtService } from "@nestjs/jwt";
 import { Request, Response } from "express";
+import { RedisService } from "src/redis/redis.service";
 
 interface Tokens {
   access_token: string;
@@ -19,9 +21,9 @@ interface Tokens {
 export class AuthService {
   constructor(
     private prisma: PrismaService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly redisService: RedisService
   ) {}
-  private loggedOutUsers = new Set<string>();
 
   async login(dto: LoginDto, response: Response) {
     const user = await this.getUserByEmail(dto.email);
@@ -173,6 +175,8 @@ export class AuthService {
         secret: process.env.ACCESS_TOKEN_KEY,
       });
       await this.updateRefreshToken(decode.sub, null);
+      const expiresAt = decode.exp * 1000;
+      await this.redisService.setBlackListToken(token, expiresAt);
     }
     response.clearCookie("refresh_token");
 
@@ -187,5 +191,16 @@ export class AuthService {
       return authHeader.split(" ")[1]; // Extract token from "Bearer <token>"
     }
     return null;
+  }
+
+  // validate token
+  async validateToken(token: string) {
+    const isBlackListed = await this.redisService.isTokenBlackListed(token);
+    if (isBlackListed) {
+      throw new UnauthorizedException("Token is blacklisted");
+    }
+    return this.jwtService.verifyAsync(token, {
+      secret: process.env.ACCESS_TOKEN_KEY,
+    });
   }
 }

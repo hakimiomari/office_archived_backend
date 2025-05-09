@@ -3,6 +3,7 @@ import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { PrismaModule } from "src/prisma/prisma.module";
 import { JwtModule } from "@nestjs/jwt";
+import { RedisModule } from "src/redis/redis.module";
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { JwtModule } from "@nestjs/jwt";
       secret: process.env.ACCESS_TOKEN_KEY,
       signOptions: { expiresIn: process.env.ACCESS_TOKEN_EXPIRED_TIME },
     }),
+    RedisModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],
