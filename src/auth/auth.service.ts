@@ -90,7 +90,7 @@ export class AuthService {
     });
   }
 
-  async updateRefreshToken(userId: number, refresh_token: string) {
+  async updateRefreshToken(userId: number, refresh_token: string | null) {
     return await this.prisma.users.update({
       where: {
         id: userId,
@@ -167,10 +167,14 @@ export class AuthService {
   // logout
   async logout(request: Request, response: Response) {
     const token = await this.extractTokenFromHeader(request);
-    console.log("token", token);
-    // const decode = this.jwtService.decode(response)
 
-    // response.clearCookie("refresh_token");
+    if (token) {
+      const decode = this.jwtService.verify(token, {
+        secret: process.env.ACCESS_TOKEN_KEY,
+      });
+      await this.updateRefreshToken(decode.sub, null);
+    }
+    response.clearCookie("refresh_token");
 
     return {
       message: "Logged out successfully",
