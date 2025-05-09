@@ -63,7 +63,7 @@ export class AuthService {
     }
 
     const password = await this.hashedPassword(dto.password);
-    const newUser = await this.prisma.users.create({
+    const newUser = await this.prisma.user.create({
       data: {
         name: dto.name,
         email: dto.email,
@@ -85,7 +85,7 @@ export class AuthService {
   }
 
   async getUserByEmail(email: string) {
-    return await this.prisma.users.findUnique({
+    return await this.prisma.user.findUnique({
       where: {
         email: email,
       },
@@ -93,7 +93,7 @@ export class AuthService {
   }
 
   async updateRefreshToken(userId: number, refresh_token: string | null) {
-    return await this.prisma.users.update({
+    return await this.prisma.user.update({
       where: {
         id: userId,
       },
@@ -114,7 +114,7 @@ export class AuthService {
       secret: process.env.REFRESH_TOKEN_KEY,
     });
 
-    const user = await this.prisma.users.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: {
         email: email,
       },
