@@ -14,13 +14,49 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model users {
+model User {
   id              Int      @id @default(autoincrement())
   name            String
   email           String   @unique
   password        String
   refresh_token   String?
   profile_picture  String?  // optional field
+  roles           Role[]   @relation("UserRoles")
+  permissions     Permission[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  createdRoles    Role[] @relation("CreatedRoles")
+
+  @@map("users") // This is optional, but if you want to map it to 'users', you can use this
+
+}
+
+model Role {
+  id           Int          @id @default(autoincrement())
+  name         String       @unique
+  permissions  Permission[] @relation("RolePermissions")
+  users        User[]       @relation("UserRoles")
+  createdBy   Int
+  created_at   DateTime     @default(now())
+
+  createdByUser User @relation("CreatedRoles", fields: [createdBy], references: [id])
+
+
+  @@map("roles")
+}
+
+model Permission {
+  id    Int     @id @default(autoincrement())
+  name  String  @unique
+  group_name String
+  label String
+  roles Role[]  @relation("RolePermissions")
+  createdAt DateTime @default(now())
+
+  created_by Int?
+  user  User? @relation(fields: [created_by], references: [id])
+
+  @@index([created_by])
+  @@map("permissions")
 }
