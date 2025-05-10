@@ -4,7 +4,7 @@ import { AuthService } from "./auth.service";
 import { PrismaModule } from "src/prisma/prisma.module";
 import { JwtModule } from "@nestjs/jwt";
 import { RedisModule } from "src/redis/redis.module";
-import { SeedService } from "../../prisma/seed/seed.service";
+import { SeedService } from "../../prisma/seed.service";
 
 @Module({
   imports: [

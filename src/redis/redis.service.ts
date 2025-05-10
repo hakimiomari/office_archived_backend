@@ -25,7 +25,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async getClient() {
-    this.client;
+    return this.client;
   }
 
   async setBlackListToken(token: string, expiresAt: number) {

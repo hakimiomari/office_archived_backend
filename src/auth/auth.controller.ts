@@ -12,7 +12,7 @@ import { LoginDto } from "./dto/LoginDto.dto";
 import { AuthService } from "./auth.service";
 import { Request, Response } from "express";
 import { AuthGuard } from "./guard/auth.guard";
-import { SeedService } from "../../prisma/seed/seed.service";
+import { SeedService } from "../../prisma/seed.service";
 
 @Controller("auth")
 export class AuthController {
