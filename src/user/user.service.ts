@@ -7,6 +7,22 @@ export class UserService {
   constructor(private readonly prismaService: PrismaService) {}
 
   async assignRole(dto: RoleDto) {
+    const role = await this.prismaService.role.findMany({
+      where: {
+        id: dto.role,
+      },
+    });
+    console.log(role);
+    const user = await this.prismaService.user.update({
+      where: {
+        id: dto.userId,
+      },
+      data: {
+        roles: {
+          connect: role.map((role) => ({ id: role.id })),
+        },
+      },
+    });
     return {
       message: "Role Assigned Successfully",
     };
