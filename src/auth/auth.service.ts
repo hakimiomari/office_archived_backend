@@ -36,9 +36,13 @@ export class AuthService {
       throw new NotFoundException("Invalid Credentials");
     }
 
+    const permissions = user.roles[0].permissions;
+    const role = user.roles[0].name;
     const { access_token, refresh_token } = await this.getTokens(
       user.id,
-      user.email
+      user.email,
+      role,
+      permissions
     );
 
     this.updateRefreshToken(user.id, refresh_token);
@@ -71,9 +75,13 @@ export class AuthService {
       },
     });
 
+    const permissions = [];
+    const role = "admin";
     const { access_token, refresh_token } = await this.getTokens(
       newUser.id,
-      newUser.email
+      newUser.email,
+      role,
+      permissions
     );
 
     this.updateRefreshToken(newUser.id, refresh_token);
@@ -88,6 +96,13 @@ export class AuthService {
     return await this.prisma.user.findUnique({
       where: {
         email: email,
+      },
+      include: {
+        roles: {
+          include: {
+            permissions: true,
+          },
+        },
       },
     });
   }
@@ -122,8 +137,10 @@ export class AuthService {
     if (!user) {
       throw new NotFoundException("User not found");
     }
+    const permissions = [];
+    const role = "admin";
     const { access_token, refresh_token: new_refresh_token } =
-      await this.getTokens(user.id, user.email);
+      await this.getTokens(user.id, user.email, role, permissions);
 
     // update refresh token
     this.updateRefreshToken(user.id, new_refresh_token);
@@ -145,10 +162,20 @@ export class AuthService {
     return await bcrypt.hash(password, 10);
   }
 
-  async getTokens(userId: number, email: string): Promise<Tokens> {
+  async getTokens(
+    userId: number,
+    email: string,
+    role: string,
+    permissions
+  ): Promise<Tokens> {
     const [access_token, refresh_token] = await Promise.all([
       this.jwtService.signAsync(
-        { sub: userId, email },
+        {
+          sub: userId,
+          email,
+          role,
+          permissions: permissions.map((permission) => permission.name),
+        },
         {
           secret: process.env.ACCESS_TOKEN_KEY,
           expiresIn: process.env.ACCESS_TOKEN_EXPIRED_TIME,
@@ -156,7 +183,12 @@ export class AuthService {
       ),
 
       this.jwtService.signAsync(
-        { sub: userId, email },
+        {
+          sub: userId,
+          email,
+          role,
+          permissions: permissions.map((permission) => permission.name),
+        },
         {
           secret: process.env.REFRESH_TOKEN_KEY,
           expiresIn: process.env.REFRESH_TOKEN_EXPIRED_TIME,
