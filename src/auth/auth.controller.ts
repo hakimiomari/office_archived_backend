@@ -13,6 +13,7 @@ import { AuthService } from "./auth.service";
 import { Request, Response } from "express";
 import { AuthGuard } from "./guard/auth.guard";
 import { SeedService } from "../../prisma/seed.service";
+import { PermissionsGuard } from "src/guard/permissions.guard";
 
 @Controller("auth")
 export class AuthController {
@@ -41,8 +42,8 @@ export class AuthController {
   ) {
     return this.authService.refreshToken(request, response);
   }
-
   @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, PermissionsGuard("read:users"))
   @Get("logout")
   async logout(
     @Req() request: Request,
