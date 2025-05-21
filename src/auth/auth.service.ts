@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -28,12 +29,12 @@ export class AuthService {
   async login(dto: LoginDto, response: Response) {
     const user = await this.getUserByEmail(dto.email);
     if (!user) {
-      throw new NotFoundException("Invalid Credentials");
+      throw new ForbiddenException("Invalid Credentials");
     }
 
     const password = await bcrypt.compare(dto.password, user.password);
     if (!password) {
-      throw new NotFoundException("Invalid Credentials");
+      throw new ForbiddenException("Invalid Credentials");
     }
 
     const permissions = user.roles[0].permissions;
@@ -72,6 +73,9 @@ export class AuthService {
         name: dto.name,
         email: dto.email,
         password: password,
+        roles: {
+          connect: [{ id: dto.role }],
+        },
       },
     });
 
