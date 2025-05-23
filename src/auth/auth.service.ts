@@ -74,7 +74,7 @@ export class AuthService {
         email: dto.email,
         password: password,
         roles: {
-          connect: [{ id: dto.role }],
+          connect: [{ id: Number(dto.role) }],
         },
       },
     });
