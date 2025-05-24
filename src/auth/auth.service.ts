@@ -56,8 +56,16 @@ export class AuthService {
       path: "/",
     });
 
+    response.cookie("access_token", access_token, {
+      httpOnly: false,
+      secure: false,
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+      path: "/",
+    });
+
     return {
-      access_token,
+      message: "Login Successful",
     };
   }
 
@@ -215,6 +223,7 @@ export class AuthService {
       await this.redisService.setBlackListToken(token, expiresAt);
     }
     response.clearCookie("refresh_token");
+    response.clearCookie("access_token");
 
     return {
       message: "Logged out successfully",
