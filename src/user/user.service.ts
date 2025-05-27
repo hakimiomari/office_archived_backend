@@ -27,4 +27,15 @@ export class UserService {
       message: "Role Assigned Successfully",
     };
   }
+
+  async profile() {
+    const user = await this.prismaService.user.findUnique({
+      where: {
+        id: 1,
+      },
+    });
+    return {
+      user,
+    };
+  }
 }

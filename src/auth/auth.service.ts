@@ -65,7 +65,8 @@ export class AuthService {
     });
 
     return {
-      message: "Login Successful",
+      access_token,
+      user,
     };
   }
 
