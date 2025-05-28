@@ -17,5 +17,6 @@ import { SeedService } from "../../prisma/seed.service";
   ],
   controllers: [AuthController],
   providers: [AuthService, SeedService],
+  exports: [JwtModule, AuthService],
 })
 export class AuthModule {}
