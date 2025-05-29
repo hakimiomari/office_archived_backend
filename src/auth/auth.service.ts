@@ -2,7 +2,6 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
-  NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
 import { LoginDto } from "./dto/LoginDto.dto";
@@ -64,9 +63,16 @@ export class AuthService {
       path: "/",
     });
 
+    const filteredUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      profile_picture: user.profile_picture,
+    };
+
     return {
       access_token,
-      user,
+      user: filteredUser,
     };
   }
 
@@ -135,23 +141,19 @@ export class AuthService {
   async refreshToken(request: Request, response: Response) {
     const refresh_token = request.cookies["refresh_token"];
     if (!refresh_token) {
-      throw new NotFoundException("Refresh token not found");
+      throw new UnauthorizedException("Refresh token not found");
     }
 
     const { email } = await this.jwtService.verifyAsync(refresh_token, {
       secret: process.env.REFRESH_TOKEN_KEY,
     });
 
-    const user = await this.prisma.user.findUnique({
-      where: {
-        email: email,
-      },
-    });
+    const user = await this.getUserByEmail(email);
     if (!user) {
-      throw new NotFoundException("User not found");
+      throw new UnauthorizedException("User not found");
     }
-    const permissions = [];
-    const role = "admin";
+    const permissions = user.roles[0].permissions;
+    const role = user.roles[0].name;
     const { access_token, refresh_token: new_refresh_token } =
       await this.getTokens(user.id, user.email, role, permissions);
 
@@ -166,8 +168,24 @@ export class AuthService {
       path: "/",
     });
 
+    response.cookie("access_token", access_token, {
+      httpOnly: false,
+      secure: false,
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+      path: "/",
+    });
+
+    const filteredUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      profile_picture: user.profile_picture,
+    };
+
     return {
       access_token,
+      user: filteredUser,
     };
   }
 
