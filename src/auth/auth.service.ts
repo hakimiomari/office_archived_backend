@@ -51,8 +51,7 @@ export class AuthService {
       httpOnly: true,
       secure: false,
       sameSite: "strict",
-      // maxAge: 1000 * 60 * 60 * 24 * 15,
-      maxAge: 1000 * 60 * 5,
+      maxAge: 1000 * 60 * 60 * 24 * 15,
       path: "/",
     });
 
@@ -60,8 +59,7 @@ export class AuthService {
       httpOnly: false,
       secure: false,
       sameSite: "strict",
-      // maxAge: 15 * 60 * 1000, // 15 minutes
-      maxAge: 1000 * 60 * 1,
+      maxAge: 15 * 60 * 1000, // 15 minutes
       path: "/",
     });
 
@@ -166,8 +164,7 @@ export class AuthService {
       httpOnly: true,
       secure: false,
       sameSite: "strict",
-      // maxAge: 1000 * 60 * 60 * 24 * 15,
-      maxAge: 1000 * 60 * 5,
+      maxAge: 1000 * 60 * 60 * 24 * 15,
       path: "/",
     });
 
@@ -175,8 +172,7 @@ export class AuthService {
       httpOnly: false,
       secure: false,
       sameSite: "strict",
-      // maxAge: 15 * 60 * 1000, // 15 minutes
-      maxAge: 1000 * 60 * 1,
+      maxAge: 15 * 60 * 1000, // 15 minutes
       path: "/",
     });
 
