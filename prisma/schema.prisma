@@ -26,6 +26,7 @@ model User {
   permissions     Permission[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  reports         Report[] @relation("CreateReport")
 
   createdRoles    Role[] @relation("CreatedRoles")
 
@@ -60,4 +61,28 @@ model Permission {
 
   @@index([created_by])
   @@map("permissions")
+}
+
+model Report {
+  id        Int      @id @default(autoincrement())
+  memo     String
+  title      String
+  register_number String
+  date      DateTime
+  note      String
+  file      Int
+  category  String
+  type      ReportType @default(in)
+  created_at     DateTime @default(now())
+  createdBy Int
+  createdByUser User @relation("CreateReport", fields: [createdBy], references: [id])
+
+ @@index([createdBy, title, register_number, date])
+ @@map("reports")
+
+}
+
+enum ReportType {
+  in
+  out
 }
