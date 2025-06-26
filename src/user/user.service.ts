@@ -3,16 +3,21 @@ import { RoleDto } from "./dto/RoleDto.dto";
 import { PrismaService } from "src/prisma/prisma.service";
 
 @Injectable()
+/**
+ * Service to handle user-related operations.
+ */
 export class UserService {
   constructor(private readonly prismaService: PrismaService) {}
 
+  /**
+   * Assign roles to the users
+   */
   async assignRole(dto: RoleDto) {
     const role = await this.prismaService.role.findMany({
       where: {
         id: dto.role,
       },
     });
-    console.log(role);
     const user = await this.prismaService.user.update({
       where: {
         id: dto.userId,
@@ -28,6 +33,9 @@ export class UserService {
     };
   }
 
+  /**
+   * Get user profile
+   */
   async profile(arg) {
     const user = await this.prismaService.user.findUnique({
       where: {

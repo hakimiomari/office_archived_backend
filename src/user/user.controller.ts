@@ -3,8 +3,10 @@ import { RoleDto } from "./dto/RoleDto.dto";
 import { UserService } from "./user.service";
 import { AuthGuard } from "src/auth/guard/auth.guard";
 import { Request } from "express";
+import { ApiTags } from "@nestjs/swagger";
 
 @Controller("user")
+@ApiTags("User")
 export class UserController {
   constructor(private userService: UserService) {}
 

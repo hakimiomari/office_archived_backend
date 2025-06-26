@@ -14,8 +14,10 @@ import { Request, Response } from "express";
 import { AuthGuard } from "./guard/auth.guard";
 import { SeedService } from "../../prisma/seed.service";
 import { PermissionsGuard } from "src/guard/permissions.guard";
+import { ApiTags } from "@nestjs/swagger";
 
 @Controller("auth")
+@ApiTags("Auth")
 export class AuthController {
   constructor(
     private authService: AuthService,

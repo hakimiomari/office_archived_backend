@@ -18,16 +18,19 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "doc": "npx @compodoc/compodoc -p tsconfig.json -s --port 8002 --watch -d ./documentation"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.service.ts"
   },
   "dependencies": {
+    "@compodoc/compodoc": "1.1.23",
     "@nestjs/common": "^11.1.0",
     "@nestjs/core": "^11.1.0",
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/swagger": "^11.2.0",
     "@prisma/client": "6.7.0",
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",
