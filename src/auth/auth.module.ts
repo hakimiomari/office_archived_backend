@@ -5,6 +5,8 @@ import { PrismaModule } from "src/prisma/prisma.module";
 import { JwtModule } from "@nestjs/jwt";
 import { RedisModule } from "src/redis/redis.module";
 import { SeedService } from "../../prisma/seed.service";
+import { HashingProvider } from './providers/hashing.provider';
+import { BcryptProvider } from './providers/bcrypt.provider';
 
 @Module({
   imports: [
@@ -16,7 +18,7 @@ import { SeedService } from "../../prisma/seed.service";
     RedisModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, SeedService],
+  providers: [AuthService, SeedService, HashingProvider, BcryptProvider],
   exports: [JwtModule, AuthService],
 })
 export class AuthModule {}
