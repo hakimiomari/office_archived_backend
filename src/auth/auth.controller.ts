@@ -7,8 +7,7 @@ import {
   Res,
   UseGuards,
 } from "@nestjs/common";
-import { CreateUserDto } from "./dto/CreateUserDto.dot";
-import { LoginDto } from "./dto/LoginDto.dto";
+import { SignInDto } from "./dto/SignInDto.dto";
 import { AuthService } from "./auth.service";
 import { Request, Response } from "express";
 import { AuthGuard } from "./guard/auth.guard";
@@ -24,17 +23,12 @@ export class AuthController {
     private seedService: SeedService
   ) {}
 
-  @Post("login")
-  async login(
-    @Body() dto: LoginDto,
+  @Post("sign_in")
+  async signIn(
+    @Body() dto: SignInDto,
     @Res({ passthrough: true }) response: Response
   ) {
-    return this.authService.login(dto, response);
-  }
-
-  @Post("register")
-  async register(@Body() dto: CreateUserDto) {
-    return this.authService.register(dto);
+    return this.authService.signIn(dto, response);
   }
 
   @Get("refresh_token")

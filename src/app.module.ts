@@ -5,7 +5,7 @@ import { AuthModule } from "./auth/auth.module";
 import { PrismaService } from "./prisma/prisma.service";
 import { PrismaModule } from "./prisma/prisma.module";
 import { RedisModule } from "./redis/redis.module";
-import { UserModule } from "./user/user.module";
+import { UserModule } from "./users/users.module";
 import { ArchivesModule } from "./archives/archives.module";
 
 @Module({

@@ -1,4 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable } from "@nestjs/common";
 
 @Injectable()
-export class HashingProvider {}
+export abstract class HashingProvider {
+  abstract hashPassword(data: string | Buffer): Promise<string>;
+
+  abstract verifyPassword(
+    data: string | Buffer,
+    hash: string
+  ): Promise<boolean>;
+}

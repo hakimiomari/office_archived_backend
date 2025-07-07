@@ -1,14 +1,25 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { RoleDto } from "./dto/RoleDto.dto";
 import { PrismaService } from "src/prisma/prisma.service";
+import { CreateUserDto } from "./dto/CreateUserDto.dot";
+import { CreateUserProvider } from "./providers/create-user.provider";
+import { FindOneUserByEmailProvider } from "./providers/find-one-user-by-email.provider";
 
 @Injectable()
 /**
  * Service to handle user-related operations.
  */
 export class UserService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly createUserProvider: CreateUserProvider,
+    private readonly findOneUserByEmailProvider: FindOneUserByEmailProvider
+  ) {}
 
+  /** Register a new user */
+  async createUser(createUserDto: CreateUserDto) {
+    return this.createUserProvider.create(createUserDto);
+  }
   /**
    * Assign roles to the users
    */
@@ -48,5 +59,9 @@ export class UserService {
     return {
       user,
     };
+  }
+
+  async findOneByEmail(email: string) {
+    return await this.findOneUserByEmailProvider.findOneUserByEmail(email);
   }
 }

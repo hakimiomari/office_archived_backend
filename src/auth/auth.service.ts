@@ -1,11 +1,9 @@
 import {
-  ConflictException,
   ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
-import { LoginDto } from "./dto/LoginDto.dto";
-import { CreateUserDto } from "./dto/CreateUserDto.dot";
+import { SignInDto } from "./dto/SignInDto.dto";
 import { PrismaService } from "src/prisma/prisma.service";
 import * as bcrypt from "bcrypt";
 import { JwtService } from "@nestjs/jwt";
@@ -25,7 +23,7 @@ export class AuthService {
     private readonly redisService: RedisService
   ) {}
 
-  async login(dto: LoginDto, response: Response) {
+  async signIn(dto: SignInDto, response: Response) {
     const user = await this.getUserByEmail(dto.email);
     if (!user) {
       throw new ForbiddenException("Invalid Credentials");
@@ -73,41 +71,6 @@ export class AuthService {
     return {
       access_token,
       user: filteredUser,
-    };
-  }
-
-  async register(dto: CreateUserDto) {
-    const user = await this.getUserByEmail(dto.email);
-    if (user) {
-      throw new ConflictException("User already exists");
-    }
-
-    const password = await this.hashedPassword(dto.password);
-    const newUser = await this.prisma.user.create({
-      data: {
-        name: dto.name,
-        email: dto.email,
-        password: password,
-        roles: {
-          connect: [{ id: Number(dto.role) }],
-        },
-      },
-    });
-
-    const permissions = [];
-    const role = "admin";
-    const { access_token, refresh_token } = await this.getTokens(
-      newUser.id,
-      newUser.email,
-      role,
-      permissions
-    );
-
-    this.updateRefreshToken(newUser.id, refresh_token);
-
-    return {
-      access_token,
-      refresh_token,
     };
   }
 
