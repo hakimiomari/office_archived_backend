@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   RequestTimeoutException,
 } from "@nestjs/common";
@@ -14,6 +16,7 @@ export class CreateUserProvider {
   constructor(
     private readonly prisma: PrismaService,
     private readonly hashingProvider: HashingProvider,
+    @Inject(forwardRef(() => AuthService))
     private readonly authService: AuthService,
     private readonly findOneUserByEmailProvider: FindOneUserByEmailProvider
   ) {}

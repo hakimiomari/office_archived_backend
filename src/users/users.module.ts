@@ -10,5 +10,6 @@ import { CreateUserProvider } from "./providers/create-user.provider";
   imports: [PrismaModule, forwardRef(() => AuthModule)],
   controllers: [UserController],
   providers: [UserService, FindOneUserByEmailProvider, CreateUserProvider],
+  exports: [CreateUserProvider, UserService],
 })
 export class UserModule {}

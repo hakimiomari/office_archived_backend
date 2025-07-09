@@ -1,5 +1,7 @@
 import {
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -9,6 +11,8 @@ import * as bcrypt from "bcrypt";
 import { JwtService } from "@nestjs/jwt";
 import { Request, Response } from "express";
 import { RedisService } from "src/redis/redis.service";
+import { SignInProvider } from "./providers/sign-in.provider";
+import { UserService } from "src/users/users.service";
 
 interface Tokens {
   access_token: string;
@@ -20,73 +24,14 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly redisService: RedisService
+    private readonly redisService: RedisService,
+    private readonly signInProvider: SignInProvider,
+    @Inject(forwardRef(() => UserService))
+    private readonly userService: UserService
   ) {}
 
   async signIn(dto: SignInDto, response: Response) {
-    const user = await this.getUserByEmail(dto.email);
-    if (!user) {
-      throw new ForbiddenException("Invalid Credentials");
-    }
-
-    const password = await bcrypt.compare(dto.password, user.password);
-    if (!password) {
-      throw new ForbiddenException("Invalid Credentials");
-    }
-
-    const permissions = user.roles[0].permissions;
-    const role = user.roles[0].name;
-    const { access_token, refresh_token } = await this.getTokens(
-      user.id,
-      user.email,
-      role,
-      permissions
-    );
-
-    this.updateRefreshToken(user.id, refresh_token);
-
-    response.cookie("refresh_token", refresh_token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "strict",
-      maxAge: 1000 * 60 * 60 * 24 * 15,
-      path: "/",
-    });
-
-    response.cookie("access_token", access_token, {
-      httpOnly: false,
-      secure: false,
-      sameSite: "strict",
-      maxAge: 15 * 60 * 1000, // 15 minutes
-      path: "/",
-    });
-
-    const filteredUser = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      profile_picture: user.profile_picture,
-    };
-
-    return {
-      access_token,
-      user: filteredUser,
-    };
-  }
-
-  async getUserByEmail(email: string) {
-    return await this.prisma.user.findUnique({
-      where: {
-        email: email,
-      },
-      include: {
-        roles: {
-          include: {
-            permissions: true,
-          },
-        },
-      },
-    });
+    return await this.signInProvider.signIn(dto, response);
   }
 
   async updateRefreshToken(userId: number, refresh_token: string | null) {
@@ -111,7 +56,7 @@ export class AuthService {
       secret: process.env.REFRESH_TOKEN_KEY,
     });
 
-    const user = await this.getUserByEmail(email);
+    const user = await this.userService.findOneByEmail(email);
     if (!user) {
       throw new UnauthorizedException("User not found");
     }

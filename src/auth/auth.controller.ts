@@ -23,7 +23,7 @@ export class AuthController {
     private seedService: SeedService
   ) {}
 
-  @Post("sign_in")
+  @Post("sign-in")
   async signIn(
     @Body() dto: SignInDto,
     @Res({ passthrough: true }) response: Response

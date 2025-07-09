@@ -8,6 +8,7 @@ import { SeedService } from "../../prisma/seed.service";
 import { HashingProvider } from "./providers/hashing.provider";
 import { BcryptProvider } from "./providers/bcrypt.provider";
 import { UserModule } from "src/users/users.module";
+import { SignInProvider } from "./providers/sign-in.provider";
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { UserModule } from "src/users/users.module";
       provide: HashingProvider,
       useClass: BcryptProvider,
     },
+    SignInProvider,
   ],
   exports: [JwtModule, AuthService, HashingProvider],
 })
