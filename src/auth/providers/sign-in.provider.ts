@@ -11,7 +11,7 @@ import { UserService } from "src/users/users.service";
 import { HashingProvider } from "./hashing.provider";
 import { AuthService } from "../auth.service";
 import { Response } from "express";
-
+import { TokenProvider } from "./token.provider";
 @Injectable()
 export class SignInProvider {
   constructor(
@@ -19,7 +19,8 @@ export class SignInProvider {
     private readonly userService: UserService,
     private readonly hashingProvider: HashingProvider,
     @Inject(forwardRef(() => AuthService))
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    private readonly tokenProvider: TokenProvider
   ) {}
 
   public async signIn(signInDto: SignInDto, response: Response) {
@@ -43,13 +44,13 @@ export class SignInProvider {
     }
     const permissions = user.roles[0].permissions;
     const role = user.roles[0].name;
-    const { access_token, refresh_token } = await this.authService.getTokens(
+    const { access_token, refresh_token } = await this.tokenProvider.getTokens(
       user.id,
       user.email,
       role,
       permissions
     );
-    await this.authService.updateRefreshToken(user.id, refresh_token);
+    // await this.authService.updateRefreshToken(user.id, refresh_token);
     response.cookie("refresh_token", refresh_token, {
       httpOnly: true,
       secure: false,

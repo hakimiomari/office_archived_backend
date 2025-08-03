@@ -9,16 +9,25 @@ import { HashingProvider } from "./providers/hashing.provider";
 import { BcryptProvider } from "./providers/bcrypt.provider";
 import { UserModule } from "src/users/users.module";
 import { SignInProvider } from "./providers/sign-in.provider";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { LogoutProvider } from "./providers/logout.provider";
+import { TokenProvider } from "./providers/token.provider";
 
 @Module({
   imports: [
     PrismaModule,
-    JwtModule.register({
-      secret: process.env.ACCESS_TOKEN_KEY,
-      signOptions: { expiresIn: process.env.ACCESS_TOKEN_EXPIRED_TIME },
-    }),
     RedisModule,
     forwardRef(() => UserModule),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get("access_token"),
+        signOptions: {
+          expiresIn: configService.get<string>("access_token_expires_in"),
+        },
+      }),
+    }),
   ],
   controllers: [AuthController],
   providers: [
@@ -29,7 +38,15 @@ import { SignInProvider } from "./providers/sign-in.provider";
       useClass: BcryptProvider,
     },
     SignInProvider,
+    LogoutProvider,
+    TokenProvider,
   ],
-  exports: [JwtModule, AuthService, HashingProvider],
+  exports: [
+    JwtModule,
+    AuthService,
+    HashingProvider,
+    LogoutProvider,
+    TokenProvider,
+  ],
 })
 export class AuthModule {}

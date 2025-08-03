@@ -29,7 +29,7 @@ export class UserService {
         id: dto.role,
       },
     });
-    const user = await this.prismaService.user.update({
+    await this.prismaService.user.update({
       where: {
         id: dto.userId,
       },

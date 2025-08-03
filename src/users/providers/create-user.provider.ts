@@ -10,7 +10,7 @@ import { PrismaService } from "src/prisma/prisma.service";
 import { HashingProvider } from "src/auth/providers/hashing.provider";
 import { AuthService } from "src/auth/auth.service";
 import { FindOneUserByEmailProvider } from "./find-one-user-by-email.provider";
-
+import { TokenProvider } from "src/auth/providers/token.provider";
 @Injectable()
 export class CreateUserProvider {
   constructor(
@@ -18,7 +18,8 @@ export class CreateUserProvider {
     private readonly hashingProvider: HashingProvider,
     @Inject(forwardRef(() => AuthService))
     private readonly authService: AuthService,
-    private readonly findOneUserByEmailProvider: FindOneUserByEmailProvider
+    private readonly findOneUserByEmailProvider: FindOneUserByEmailProvider,
+    private readonly tokenProvider: TokenProvider
   ) {}
 
   public async create(createUserDto: CreateUserDto) {
@@ -57,14 +58,14 @@ export class CreateUserProvider {
 
     const permissions = [];
     const role = "admin";
-    const { access_token, refresh_token } = await this.authService.getTokens(
+    const { access_token, refresh_token } = await this.tokenProvider.getTokens(
       newUser.id,
       newUser.email,
       role,
       permissions
     );
 
-    this.authService.updateRefreshToken(newUser.id, refresh_token);
+    // this.authService.updateRefreshToken(newUser.id, refresh_token);
 
     return {
       access_token,
