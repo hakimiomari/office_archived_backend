@@ -20,7 +20,6 @@ model User {
   name            String
   email           String   @unique
   password        String
-  refresh_token   String?
   profile_picture  String?  // optional field
   roles           Role[]   @relation("UserRoles")
   permissions     Permission[]

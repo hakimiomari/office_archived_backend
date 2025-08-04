@@ -36,4 +36,18 @@ export class FindOneUserByEmailProvider {
 
     return user;
   }
+
+  public async isUserExists(email: string) {
+    try {
+      const user = await this.prismaService.user.findUnique({
+        where: {
+          email: email,
+        },
+      });
+      return !!user;
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      return false;
+    }
+  }
 }

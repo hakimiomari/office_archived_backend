@@ -1,14 +1,11 @@
 import {
   BadRequestException,
-  forwardRef,
-  Inject,
   Injectable,
   RequestTimeoutException,
 } from "@nestjs/common";
 import { CreateUserDto } from "../dto/CreateUserDto.dot";
 import { PrismaService } from "src/prisma/prisma.service";
 import { HashingProvider } from "src/auth/providers/hashing.provider";
-import { AuthService } from "src/auth/auth.service";
 import { FindOneUserByEmailProvider } from "./find-one-user-by-email.provider";
 import { TokenProvider } from "src/auth/providers/token.provider";
 @Injectable()
@@ -16,8 +13,6 @@ export class CreateUserProvider {
   constructor(
     private readonly prisma: PrismaService,
     private readonly hashingProvider: HashingProvider,
-    @Inject(forwardRef(() => AuthService))
-    private readonly authService: AuthService,
     private readonly findOneUserByEmailProvider: FindOneUserByEmailProvider,
     private readonly tokenProvider: TokenProvider
   ) {}
@@ -25,7 +20,7 @@ export class CreateUserProvider {
   public async create(createUserDto: CreateUserDto) {
     let existingUser;
     try {
-      existingUser = await this.findOneUserByEmailProvider.findOneUserByEmail(
+      existingUser = await this.findOneUserByEmailProvider.isUserExists(
         createUserDto.email
       );
     } catch (error) {
@@ -64,8 +59,6 @@ export class CreateUserProvider {
       role,
       permissions
     );
-
-    // this.authService.updateRefreshToken(newUser.id, refresh_token);
 
     return {
       access_token,
