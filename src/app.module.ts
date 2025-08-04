@@ -8,7 +8,7 @@ import { RedisModule } from "./redis/redis.module";
 import { UserModule } from "./users/users.module";
 import { ArchivesModule } from "./archives/archives.module";
 import { ConfigModule } from "@nestjs/config";
-import { refreshToken } from "./config/refresh-token.config";
+import refreshToken from "./config/refresh-token.config";
 import environmentValidation from "./config/environment.validation";
 
 @Module({

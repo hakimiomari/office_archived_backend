@@ -9,6 +9,8 @@ export default Joi.object({
   REFRESH_TOKEN_KEY: Joi.string().required(),
   ACCESS_TOKEN_EXPIRED_TIME: Joi.string().required().default("15m"),
   REFRESH_TOKEN_EXPIRED_TIME: Joi.string().required().default("15d"),
+  GOOGLE_CLIENT_ID: Joi.string().required(),
+  GOOGLE_CLIENT_SECRET: Joi.string().required(),
   //   REDIS_HOST: Joi.string().required(),
   //   REDIS_PORT: Joi.number().default(6379),
   //   REDIS_PASSWORD: Joi.string().required(),
