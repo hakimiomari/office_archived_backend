@@ -24,10 +24,10 @@ model User {
   profile_picture  String?  // optional field
   roles           Role[]   @relation("UserRoles")
   permissions     Permission[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
 
-  createdRoles    Role[] @relation("CreatedRoles")
+  created_roles    Role[] @relation("CreatedRoles")
 
   @@map("users") // This is optional, but if you want to map it to 'users', you can use this
 
@@ -38,10 +38,10 @@ model Role {
   name         String       @unique
   permissions  Permission[] @relation("RolePermissions")
   users        User[]       @relation("UserRoles")
-  createdBy   Int
+  created_by   Int
   created_at   DateTime     @default(now())
 
-  createdByUser User @relation("CreatedRoles", fields: [createdBy], references: [id])
+  created_by_user User @relation("CreatedRoles", fields: [created_by], references: [id])
 
 
   @@map("roles")
@@ -53,7 +53,7 @@ model Permission {
   group_name String
   label String
   roles Role[]  @relation("RolePermissions")
-  createdAt DateTime @default(now())
+  created_at DateTime @default(now())
 
   created_by Int?
   user  User? @relation(fields: [created_by], references: [id])
