@@ -20,7 +20,6 @@ export class SeedService {
         name: "Kamranullah Hakimi",
         email: "hakimikamranullah@gmail.com",
         password: "admin",
-        refresh_token: "admin",
         profile_picture:
           "https://avatars.githubusercontent.com/u/101364769?v=4",
         created_at: new Date(),
