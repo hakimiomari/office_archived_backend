@@ -5,8 +5,6 @@ import { Request, Response } from "express";
 import { SignInProvider } from "./providers/sign-in.provider";
 import { LogoutProvider } from "./providers/logout.provider";
 import { TokenProvider } from "./providers/token.provider";
-import { LogoutDto } from "./dto/LogoutDto.dto";
-
 @Injectable()
 export class AuthService {
   constructor(
@@ -30,7 +28,7 @@ export class AuthService {
   }
 
   // logout
-  async logout(dto: LogoutDto, response: Response) {
-    return await this.logoutProvider.logout(dto.access_token, response);
+  async logout(token, response: Response) {
+    return await this.logoutProvider.logout(token, response);
   }
 }

@@ -14,7 +14,6 @@ import { AuthGuard } from "./guard/auth.guard";
 import { SeedService } from "../../prisma/seed.service";
 import { PermissionsGuard } from "src/guard/permissions.guard";
 import { ApiTags } from "@nestjs/swagger";
-import { LogoutDto } from "./dto/LogoutDto.dto";
 
 @Controller("auth")
 @ApiTags("Auth")
@@ -43,10 +42,11 @@ export class AuthController {
   @UseGuards(AuthGuard, PermissionsGuard("read:users"))
   @Post("logout")
   async logout(
-    @Body() dto: LogoutDto,
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response
   ) {
-    return this.authService.logout(dto, response);
+    const token = request.cookies["access_token"];
+    return this.authService.logout(token, response);
   }
 
   @Post("seed")
