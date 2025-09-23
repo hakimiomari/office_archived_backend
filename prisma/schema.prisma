@@ -26,8 +26,20 @@ model User {
   permissions     Permission[]
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
+  created_by       Int?
+  updated_by       Int?
+
+
+  created_by_user User? @relation("UserCreatedBy", fields: [created_by], references: [id])
+  updated_by_user User? @relation("UserUpdatedBy", fields: [updated_by], references: [id])
+
+
+  createdUsers User[] @relation("UserCreatedBy")
+  updatedUsers User[] @relation("UserUpdatedBy")
 
   created_roles    Role[] @relation("CreatedRoles")
+  archives_update_by Archives[] @relation("archived_updated_by")
+  archives_created_by Archives[] @relation("archived_created_by")
 
   @@map("users") // This is optional, but if you want to map it to 'users', you can use this
 
@@ -73,10 +85,13 @@ model Archives {
   archive_category  String
   type      ArchiveType @default(in)
   created_at     DateTime @default(now())
-  createdBy Int
-  // createdByUser User @relation("CreateReport", fields: [createdBy], references: [id])
+  created_by Int
+  updated_at DateTime @updatedAt
+  updated_by Int
+  archived_created_by User? @relation("archived_created_by",fields: [created_by], references: [id], onUpdate: NoAction)
+  archived_updated_by User? @relation("archived_updated_by",fields: [updated_by], references: [id], onUpdate: NoAction)
 
- @@index([createdBy, title, register_number, date_exported_or_received])
+ @@index([created_by, title, register_number, date_exported_or_received])
  @@map("archives")
 
 }
