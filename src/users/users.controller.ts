@@ -1,12 +1,19 @@
 import { Body, Controller, Get, Post, Req, UseGuards } from "@nestjs/common";
 import { RoleDto } from "./dto/RoleDto.dto";
-import { UserService } from "./user.service";
+import { UserService } from "./users.service";
 import { AuthGuard } from "src/auth/guard/auth.guard";
-import { Request } from "express";
+import { ApiTags } from "@nestjs/swagger";
+import { CreateUserDto } from "./dto/CreateUserDto.dot";
 
 @Controller("user")
+@ApiTags("User")
 export class UserController {
   constructor(private userService: UserService) {}
+
+  @Post("create")
+  async create(@Body() createUserDto: CreateUserDto) {
+    return this.userService.createUser(createUserDto);
+  }
 
   @Post("assign_role")
   async assignRole(@Body() dto: RoleDto) {

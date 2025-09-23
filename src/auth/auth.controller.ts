@@ -7,35 +7,32 @@ import {
   Res,
   UseGuards,
 } from "@nestjs/common";
-import { CreateUserDto } from "./dto/CreateUserDto.dot";
-import { LoginDto } from "./dto/LoginDto.dto";
+import { SignInDto } from "./dto/SignInDto.dto";
 import { AuthService } from "./auth.service";
 import { Request, Response } from "express";
 import { AuthGuard } from "./guard/auth.guard";
 import { SeedService } from "../../prisma/seed.service";
 import { PermissionsGuard } from "src/guard/permissions.guard";
+import { ApiTags } from "@nestjs/swagger";
+import { LogoutDto } from "./dto/LogoutDto.dto";
 
 @Controller("auth")
+@ApiTags("Auth")
 export class AuthController {
   constructor(
     private authService: AuthService,
     private seedService: SeedService
   ) {}
 
-  @Post("login")
-  async login(
-    @Body() dto: LoginDto,
+  @Post("sign-in")
+  async signIn(
+    @Body() dto: SignInDto,
     @Res({ passthrough: true }) response: Response
   ) {
-    return this.authService.login(dto, response);
+    return this.authService.signIn(dto, response);
   }
 
-  @Post("register")
-  async register(@Body() dto: CreateUserDto) {
-    return this.authService.register(dto);
-  }
-
-  @Get("refresh_token")
+  @Get("refresh-token")
   async refreshToken(
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response
@@ -44,12 +41,12 @@ export class AuthController {
   }
   @UseGuards(AuthGuard)
   @UseGuards(AuthGuard, PermissionsGuard("read:users"))
-  @Get("logout")
+  @Post("logout")
   async logout(
-    @Req() request: Request,
+    @Body() dto: LogoutDto,
     @Res({ passthrough: true }) response: Response
   ) {
-    return this.authService.logout(request, response);
+    return this.authService.logout(dto, response);
   }
 
   @Post("seed")

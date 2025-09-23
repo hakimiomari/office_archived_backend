@@ -4,6 +4,7 @@ dist/
 *.log
 .env
 .env.*
+documentation
 
 # OS-specific
 .DS_Store

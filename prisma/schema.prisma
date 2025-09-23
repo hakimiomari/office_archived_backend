@@ -19,8 +19,8 @@ model User {
   id              Int      @id @default(autoincrement())
   name            String
   email           String   @unique
-  password        String
-  refresh_token   String?
+  password        String?
+  googleId        String? @unique
   profile_picture  String?  // optional field
   roles           Role[]   @relation("UserRoles")
   permissions     Permission[]
@@ -60,4 +60,28 @@ model Permission {
 
   @@index([created_by])
   @@map("permissions")
+}
+
+model Archives {
+  id        Int      @id @default(autoincrement())
+  memo     String
+  title      String
+  register_number String
+  date_exported_or_received      DateTime
+  note      String
+  file_number      Int
+  archive_category  String
+  type      ArchiveType @default(in)
+  created_at     DateTime @default(now())
+  createdBy Int
+  // createdByUser User @relation("CreateReport", fields: [createdBy], references: [id])
+
+ @@index([createdBy, title, register_number, date_exported_or_received])
+ @@map("archives")
+
+}
+
+enum ArchiveType {
+  in
+  out
 }
