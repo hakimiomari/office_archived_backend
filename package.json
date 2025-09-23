@@ -22,7 +22,7 @@
     "doc": "npx @compodoc/compodoc -p tsconfig.json -s --port 8002 --watch -d ./documentation"
   },
   "prisma": {
-    "seed": "ts-node prisma/seed.service.ts"
+    "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@compodoc/compodoc": "1.1.23",

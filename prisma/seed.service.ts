@@ -1,9 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../src/prisma/prisma.service";
+import { HashingProvider } from "../src/auth/providers/hashing.provider";
 
 @Injectable()
 export class SeedService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly hashingProvider: HashingProvider
+  ) {}
 
   async seed() {
     const permissions = [
@@ -12,6 +16,8 @@ export class SeedService {
       { name: "delete:users", group_name: "users", label: "Delete User" },
       { name: "read:users", group_name: "users", label: "Read User" },
     ];
+    const password = "admin";
+    const hashPassword = await this.hashingProvider.hashPassword(password);
 
     await this.prismaService.user.upsert({
       where: { email: "admin@admin.com" },
@@ -19,7 +25,7 @@ export class SeedService {
       create: {
         name: "Kamranullah Hakimi",
         email: "hakimikamranullah@gmail.com",
-        password: "admin",
+        password: hashPassword,
         profile_picture:
           "https://avatars.githubusercontent.com/u/101364769?v=4",
         created_at: new Date(),
@@ -75,5 +81,14 @@ export class SeedService {
     });
 
     console.log("roles created");
+
+    await this.prismaService.user.update({
+      where: { email: "hakimikamranullah@gmail.com" },
+      data: {
+        roles: {
+          connect: [{ id: 1 }, { id: 2 }],
+        },
+      },
+    });
   }
 }
