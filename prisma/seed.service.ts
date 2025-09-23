@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { PrismaService } from "src/prisma/prisma.service";
+import { PrismaService } from "../src/prisma/prisma.service";
 
 @Injectable()
 export class SeedService {
@@ -13,6 +13,22 @@ export class SeedService {
       { name: "read:users", group_name: "users", label: "Read User" },
     ];
 
+    await this.prismaService.user.upsert({
+      where: { email: "admin@admin.com" },
+      update: {},
+      create: {
+        name: "Kamranullah Hakimi",
+        email: "hakimikamranullah@gmail.com",
+        password: "admin",
+        refresh_token: "admin",
+        profile_picture:
+          "https://avatars.githubusercontent.com/u/101364769?v=4",
+        created_at: new Date(),
+      },
+    });
+
+    console.log("user created");
+
     for (const perm of permissions) {
       await this.prismaService.permission.upsert({
         where: { name: perm.name },
@@ -21,10 +37,12 @@ export class SeedService {
           name: perm.name,
           group_name: perm.group_name,
           label: perm.label,
-          createdAt: new Date(),
+          created_at: new Date(),
         },
       });
     }
+
+    console.log("permissions created");
 
     const adminPermissions = await this.prismaService.permission.findMany();
     await this.prismaService.role.upsert({
@@ -35,7 +53,7 @@ export class SeedService {
         permissions: {
           connect: adminPermissions.map((perm) => ({ id: perm.id })),
         },
-        createdBy: 1,
+        created_by: 1,
         created_at: new Date(),
       },
     });
@@ -52,9 +70,11 @@ export class SeedService {
         permissions: {
           connect: userPermissions.map((perm) => ({ id: perm.id })),
         },
-        createdBy: 1,
+        created_by: 1,
         created_at: new Date(),
       },
     });
+
+    console.log("roles created");
   }
 }
