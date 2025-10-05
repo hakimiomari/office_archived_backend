@@ -3,6 +3,7 @@ import { ConfigType } from "@nestjs/config";
 import { OAuth2Client } from "google-auth-library";
 import googleAuthConfig from "../config/google-auth.config";
 import { GoogleTokenDto } from "./dto/google-token.dto";
+import { UserService } from "src/users/users.service";
 
 @Injectable()
 export class GoogleAuthenticationService implements OnModuleInit {
@@ -10,7 +11,10 @@ export class GoogleAuthenticationService implements OnModuleInit {
 
   constructor(
     @Inject(googleAuthConfig.KEY)
-    private readonly googleAuthConfigration: ConfigType<typeof googleAuthConfig>
+    private readonly googleAuthConfigration: ConfigType<
+      typeof googleAuthConfig
+    >,
+    private readonly userService: UserService
   ) {}
 
   onModuleInit() {
@@ -18,5 +22,7 @@ export class GoogleAuthenticationService implements OnModuleInit {
     this.oauthClient = new OAuth2Client(clientID, clientSecret);
   }
 
-  public async authentication(googleTokenDto: GoogleTokenDto) {}
+  public async authentication(googleTokenDto: GoogleTokenDto) {
+    return this.userService.findOneByGoogleId(googleTokenDto);
+  }
 }

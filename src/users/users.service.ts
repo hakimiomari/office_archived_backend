@@ -68,7 +68,7 @@ export class UserService {
   }
 
   // find user by google id
-  async findOneByGoogleId(googleId: string) {
+  async findOneByGoogleId(googleId: any) {
     return await this.findOneByGoogleIdProvider.findOneByGoogleId(googleId);
   }
 }
