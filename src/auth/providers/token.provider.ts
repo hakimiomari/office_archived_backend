@@ -8,6 +8,7 @@ import { JwtService } from "@nestjs/jwt";
 import { Request, Response } from "express";
 import { RedisService } from "src/redis/redis.service";
 import { UserService } from "src/users/users.service";
+import { ConfigService } from "@nestjs/config";
 
 interface Tokens {
   access_token: string;
@@ -19,6 +20,7 @@ export class TokenProvider {
   constructor(
     private readonly jwtService: JwtService,
     private readonly redisService: RedisService,
+    private readonly configService: ConfigService,
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService
   ) {}
@@ -38,8 +40,8 @@ export class TokenProvider {
           permissions: permissions.map((permission) => permission.name),
         },
         {
-          secret: process.env.ACCESS_TOKEN_KEY,
-          expiresIn: process.env.ACCESS_TOKEN_EXPIRED_TIME,
+          secret: this.configService.get("ACCESS_TOKEN_KEY"),
+          expiresIn: this.configService.get("ACCESS_TOKEN_EXPIRED_TIME"),
         }
       ),
 
@@ -51,8 +53,8 @@ export class TokenProvider {
           permissions: permissions.map((permission) => permission.name),
         },
         {
-          secret: process.env.REFRESH_TOKEN_KEY,
-          expiresIn: process.env.REFRESH_TOKEN_EXPIRED_TIME,
+          secret: this.configService.get("REFRESH_TOKEN_KEY"),
+          expiresIn: this.configService.get("REFRESH_TOKEN_EXPIRED_TIME"),
         }
       ),
     ]);
@@ -73,7 +75,7 @@ export class TokenProvider {
     }
 
     const { email } = await this.jwtService.verifyAsync(refresh_token, {
-      secret: process.env.REFRESH_TOKEN_KEY,
+      secret: this.configService.get("REFRESH_TOKEN_KEY"),
     });
 
     const user = await this.userService.findOneByEmail(email);
@@ -121,7 +123,7 @@ export class TokenProvider {
       throw new UnauthorizedException("Token is blacklisted");
     }
     return this.jwtService.verifyAsync(token, {
-      secret: process.env.ACCESS_TOKEN_KEY,
+      secret: this.configService.get("ACCESS_TOKEN_KEY"),
     });
   }
 }
