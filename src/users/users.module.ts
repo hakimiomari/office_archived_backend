@@ -5,12 +5,17 @@ import { PrismaModule } from "src/prisma/prisma.module";
 import { AuthModule } from "src/auth/auth.module";
 import { FindOneUserByEmailProvider } from "./providers/find-one-user-by-email.provider";
 import { CreateUserProvider } from "./providers/create-user.provider";
-import { FindUserByGoogleIdProvider } from './providers/find-user-by-google-id.provider';
+import { FindOneByGoogleIdProvider } from "./providers/find-one-by-google-id.provider";
 
 @Module({
   imports: [PrismaModule, forwardRef(() => AuthModule)],
   controllers: [UserController],
-  providers: [UserService, FindOneUserByEmailProvider, CreateUserProvider, FindUserByGoogleIdProvider],
+  providers: [
+    UserService,
+    FindOneUserByEmailProvider,
+    CreateUserProvider,
+    FindOneByGoogleIdProvider,
+  ],
   exports: [CreateUserProvider, UserService, FindOneUserByEmailProvider],
 })
 export class UserModule {}
