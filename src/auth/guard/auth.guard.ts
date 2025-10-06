@@ -6,12 +6,25 @@ import {
 } from "@nestjs/common";
 import { Request } from "express";
 import { TokenProvider } from "../providers/token.provider";
-
+import { ATUH_TYPE_KEY, AuthType } from "../guard/decorators/auth.decorator";
+import { Reflector } from "@nestjs/core";
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private readonly tokenProvider: TokenProvider) {}
+  constructor(
+    private readonly tokenProvider: TokenProvider,
+    private readonly reflector: Reflector
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const authType = this.reflector.getAllAndOverride<AuthType>(ATUH_TYPE_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (authType === AuthType.None) {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest<Request>();
     const token = await this.extractTokenFromHeader(request);
     if (!token) {

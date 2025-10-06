@@ -5,6 +5,8 @@ import { CreateUserDto } from "./dto/CreateUserDto.dot";
 import { CreateUserProvider } from "./providers/create-user.provider";
 import { FindOneUserByEmailProvider } from "./providers/find-one-user-by-email.provider";
 import { FindOneByGoogleIdProvider } from "./providers/find-one-by-google-id.provider";
+import { CrcreateGoogleUserProvider } from "./providers/crcreate-google-user.provider";
+import { GoogleUserInterface } from "./interfaces/google-user.interface";
 
 @Injectable()
 /**
@@ -15,7 +17,8 @@ export class UserService {
     private readonly prismaService: PrismaService,
     private readonly createUserProvider: CreateUserProvider,
     private readonly findOneUserByEmailProvider: FindOneUserByEmailProvider,
-    private readonly findOneByGoogleIdProvider: FindOneByGoogleIdProvider
+    private readonly findOneByGoogleIdProvider: FindOneByGoogleIdProvider,
+    private readonly crcreateGoogleUserProvider: CrcreateGoogleUserProvider
   ) {}
 
   /** Register a new user */
@@ -70,5 +73,9 @@ export class UserService {
   // find user by google id
   async findOneByGoogleId(googleId: any) {
     return await this.findOneByGoogleIdProvider.findOneByGoogleId(googleId);
+  }
+
+  async createGoogleUser(googleUser: GoogleUserInterface) {
+    return await this.crcreateGoogleUserProvider.createGoogleUser(googleUser);
   }
 }
