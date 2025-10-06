@@ -10,6 +10,10 @@ export class FindOneByGoogleIdProvider {
       where: {
         googleId: googleId,
       },
+      include: {
+        roles: true,
+        permissions: true,
+      },
     });
   }
 }

@@ -4,6 +4,7 @@ import { OAuth2Client } from "google-auth-library";
 import googleAuthConfig from "../config/google-auth.config";
 import { GoogleTokenDto } from "./dto/google-token.dto";
 import { UserService } from "src/users/users.service";
+import { TokenProvider } from "../providers/token.provider";
 
 @Injectable()
 export class GoogleAuthenticationService implements OnModuleInit {
@@ -14,7 +15,8 @@ export class GoogleAuthenticationService implements OnModuleInit {
     private readonly googleAuthConfigration: ConfigType<
       typeof googleAuthConfig
     >,
-    private readonly userService: UserService
+    private readonly userService: UserService,
+    private readonly tokenProvider: TokenProvider
   ) {}
 
   onModuleInit() {
@@ -23,6 +25,23 @@ export class GoogleAuthenticationService implements OnModuleInit {
   }
 
   public async authentication(googleTokenDto: GoogleTokenDto) {
-    return this.userService.findOneByGoogleId(googleTokenDto);
+    const loginTicket = await this.oauthClient.verifyIdToken({
+      idToken: googleTokenDto.token,
+    });
+
+    const googleId = loginTicket.getPayload()?.sub;
+
+    const user = await this.userService.findOneByGoogleId(googleId);
+
+    if (user) {
+      const { access_token, refresh_token } =
+        await this.tokenProvider.getTokens(
+          user.id,
+          user.email,
+          user.roles[0].name,
+          user.permissions
+        );
+      return { access_token };
+    }
   }
 }
