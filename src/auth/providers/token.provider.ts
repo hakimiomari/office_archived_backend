@@ -28,35 +28,29 @@ export class TokenProvider {
   async getTokens(
     userId: number,
     email: string,
-    role: string,
-    permissions
+    roles: string | string[],
+    permissions: any[],
   ): Promise<Tokens> {
-    const [access_token, refresh_token] = await Promise.all([
-      this.jwtService.signAsync(
-        {
-          sub: userId,
-          email,
-          role,
-          permissions: permissions.map((permission) => permission.name),
-        },
-        {
-          secret: this.configService.get("ACCESS_TOKEN_KEY"),
-          expiresIn: this.configService.get("ACCESS_TOKEN_EXPIRED_TIME"),
-        }
-      ),
+    const rolesArray = Array.isArray(roles) ? roles : [roles];
+    const permissionNames = permissions.map((p) => p.name);
 
-      this.jwtService.signAsync(
-        {
-          sub: userId,
-          email,
-          role,
-          permissions: permissions.map((permission) => permission.name),
-        },
-        {
-          secret: this.configService.get("REFRESH_TOKEN_KEY"),
-          expiresIn: this.configService.get("REFRESH_TOKEN_EXPIRED_TIME"),
-        }
-      ),
+    const payload = {
+      sub: userId,
+      email,
+      roles: rolesArray,
+      role: rolesArray[0], // backward compat
+      permissions: permissionNames,
+    };
+
+    const [access_token, refresh_token] = await Promise.all([
+      this.jwtService.signAsync(payload, {
+        secret: this.configService.get("ACCESS_TOKEN_KEY"),
+        expiresIn: this.configService.get("ACCESS_TOKEN_EXPIRED_TIME"),
+      }),
+      this.jwtService.signAsync(payload, {
+        secret: this.configService.get("REFRESH_TOKEN_KEY"),
+        expiresIn: this.configService.get("REFRESH_TOKEN_EXPIRED_TIME"),
+      }),
     ]);
     return { access_token, refresh_token };
   }
@@ -82,10 +76,13 @@ export class TokenProvider {
     if (!user) {
       throw new UnauthorizedException("User not found");
     }
-    const permissions = user.roles[0].permissions;
-    const role = user.roles[0].name;
+    const allPermissions = user.roles.flatMap((r: any) => r.permissions);
+    const uniquePermissions = [
+      ...new Map(allPermissions.map((p: any) => [p.name, p])).values(),
+    ];
+    const roles = user.roles.map((r: any) => r.name);
     const { access_token, refresh_token: new_refresh_token } =
-      await this.getTokens(user.id, user.email, role, permissions);
+      await this.getTokens(user.id, user.email, roles, uniquePermissions);
 
     response.cookie("refresh_token", new_refresh_token, {
       httpOnly: true,

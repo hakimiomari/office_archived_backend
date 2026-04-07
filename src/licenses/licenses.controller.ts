@@ -15,15 +15,18 @@ import { LicensesService } from './licenses.service';
 import { CreateLicenseDto } from './dto/create-license.dto';
 import { UpdateLicenseDto } from './dto/update-license.dto';
 import { AuthGuard } from '../auth/guard/auth.guard';
+import { PermissionGuard } from '../guard/permissions.guard';
+import { Permissions } from '../guard/permissions.decorator';
 import { Request } from 'express';
 
 @ApiTags('Licenses')
 @Controller('licenses')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissionGuard)
 export class LicensesController {
   constructor(private readonly licensesService: LicensesService) {}
 
   @Post()
+  @Permissions('license.create')
   @ApiOperation({ summary: 'Create a new license' })
   create(@Body() dto: CreateLicenseDto, @Req() req: Request) {
     const user = req['user'];
@@ -31,6 +34,7 @@ export class LicensesController {
   }
 
   @Get()
+  @Permissions('license.read')
   @ApiOperation({ summary: 'Get all licenses with pagination' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -48,18 +52,21 @@ export class LicensesController {
   }
 
   @Get(':id')
+  @Permissions('license.read')
   @ApiOperation({ summary: 'Get a license by ID' })
   findOne(@Param('id') id: string) {
     return this.licensesService.findOne(id);
   }
 
   @Patch(':id')
+  @Permissions('license.update')
   @ApiOperation({ summary: 'Update a license' })
   update(@Param('id') id: string, @Body() dto: UpdateLicenseDto) {
     return this.licensesService.update(id, dto);
   }
 
   @Delete(':id')
+  @Permissions('license.delete')
   @ApiOperation({ summary: 'Delete a license' })
   remove(@Param('id') id: string) {
     return this.licensesService.remove(id);

@@ -15,15 +15,18 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { ContractsService } from './contracts.service';
 import { AuthGuard } from '../auth/guard/auth.guard';
+import { PermissionGuard } from '../guard/permissions.guard';
+import { Permissions } from '../guard/permissions.decorator';
 import { Request } from 'express';
 
 @ApiTags('Contracts')
 @Controller('licenses/:licenseId/contracts')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissionGuard)
 export class ContractsController {
   constructor(private readonly contractsService: ContractsService) {}
 
   @Post('upload')
+  @Permissions('contract.upload')
   @ApiOperation({ summary: 'Upload a contract file for a license' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -48,12 +51,14 @@ export class ContractsController {
   }
 
   @Get()
+  @Permissions('contract.read')
   @ApiOperation({ summary: 'Get all contracts for a license' })
   findByLicense(@Param('licenseId') licenseId: string) {
     return this.contractsService.findByLicense(licenseId);
   }
 
   @Delete(':id')
+  @Permissions('contract.delete')
   @ApiOperation({ summary: 'Delete a contract' })
   remove(@Param('id') id: string) {
     return this.contractsService.remove(id);

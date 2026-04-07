@@ -3,26 +3,43 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
-  mixin,
-  Type,
-} from "@nestjs/common";
+} from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { PERMISSIONS_KEY } from './permissions.decorator';
 
-export function PermissionsGuard(permission: string): Type<CanActivate> {
-  @Injectable()
-  class PermissionMixin implements CanActivate {
-    canActivate(context: ExecutionContext): boolean {
-      const request = context.switchToHttp().getRequest();
-      const user = request["user"];
-      if (!user || !user.permissions) {
-        throw new ForbiddenException("No user or permissions found");
-      }
+@Injectable()
+export class PermissionGuard implements CanActivate {
+  constructor(private readonly reflector: Reflector) {}
 
-      const hasPermission = user.permissions.includes(permission);
-      if (!hasPermission) {
-        throw new ForbiddenException("Insufficient permissions");
-      }
+  canActivate(context: ExecutionContext): boolean {
+    const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
+      PERMISSIONS_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
+    // If no @Permissions decorator, allow access (only AuthGuard needed)
+    if (!requiredPermissions || requiredPermissions.length === 0) {
       return true;
     }
+
+    const request = context.switchToHttp().getRequest();
+    const user = request['user'];
+
+    if (!user || !user.permissions) {
+      throw new ForbiddenException('No permissions found in token');
+    }
+
+    const userPermissions: string[] = user.permissions;
+    const hasPermission = requiredPermissions.some((perm) =>
+      userPermissions.includes(perm),
+    );
+
+    if (!hasPermission) {
+      throw new ForbiddenException(
+        `Insufficient permissions. Required: ${requiredPermissions.join(', ')}`,
+      );
+    }
+
+    return true;
   }
-  return mixin(PermissionMixin);
 }

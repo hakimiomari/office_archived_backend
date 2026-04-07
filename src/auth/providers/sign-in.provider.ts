@@ -22,7 +22,6 @@ export class SignInProvider {
 
   public async signIn(signInDto: SignInDto, response: Response) {
     const user = await this.userService.findOneByEmail(signInDto.email);
-    console.log(user);
     if (!user) {
       throw new ForbiddenException("Invalid Credentials");
     }
@@ -40,13 +39,17 @@ export class SignInProvider {
     if (!isEqual) {
       throw new UnauthorizedException("Incorrect password");
     }
-    const permissions = user.roles[0].permissions;
-    const role = user.roles[0].name;
+    // Collect ALL permissions from ALL roles (deduplicated)
+    const allPermissions = user.roles.flatMap((r) => r.permissions);
+    const uniquePermissions = [
+      ...new Map(allPermissions.map((p) => [p.name, p])).values(),
+    ];
+    const roles = user.roles.map((r) => r.name);
     const { access_token, refresh_token } = await this.tokenProvider.getTokens(
       user.id,
       user.email,
-      role,
-      permissions,
+      roles,
+      uniquePermissions,
     );
     response.cookie("refresh_token", refresh_token, {
       httpOnly: true,

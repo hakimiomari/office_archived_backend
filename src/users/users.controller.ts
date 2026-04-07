@@ -14,6 +14,8 @@ import {
 import { RoleDto } from './dto/RoleDto.dto';
 import { UserService } from './users.service';
 import { AuthGuard } from 'src/auth/guard/auth.guard';
+import { PermissionGuard } from 'src/guard/permissions.guard';
+import { Permissions } from 'src/guard/permissions.decorator';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { CreateUserDto } from './dto/CreateUserDto.dot';
 import { UpdateUserDto } from './dto/UpdateUserDto.dto';
@@ -25,12 +27,15 @@ export class UserController {
   constructor(private userService: UserService) {}
 
   @Post('create')
+  @UseGuards(AuthGuard, PermissionGuard)
+  @Permissions('user.create')
   @ApiOperation({ summary: 'Create a new user' })
   async create(@Body() createUserDto: CreateUserDto) {
     return this.userService.createUser(createUserDto);
   }
 
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, PermissionGuard)
+  @Permissions('user.read')
   @Get('list')
   @ApiOperation({ summary: 'List all users with pagination' })
   @ApiQuery({ name: 'page', required: false, type: Number })
@@ -55,14 +60,16 @@ export class UserController {
     return await this.userService.profile(request?.user);
   }
 
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, PermissionGuard)
+  @Permissions('user.read')
   @Get(':id')
   @ApiOperation({ summary: 'Get user by ID' })
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.userService.findOne(id);
   }
 
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, PermissionGuard)
+  @Permissions('user.update')
   @Patch(':id')
   @ApiOperation({ summary: 'Update a user' })
   async update(
@@ -72,7 +79,8 @@ export class UserController {
     return this.userService.updateUser(id, dto);
   }
 
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, PermissionGuard)
+  @Permissions('user.delete')
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a user' })
   async delete(@Param('id', ParseIntPipe) id: number) {
@@ -93,6 +101,8 @@ export class UserController {
     return this.userService.updateUser(request.user.sub, dto);
   }
 
+  @UseGuards(AuthGuard, PermissionGuard)
+  @Permissions('user.update')
   @Post('assign_role')
   @ApiOperation({ summary: 'Assign role to user' })
   async assignRole(@Body() dto: RoleDto) {
