@@ -1,28 +1,101 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from "@nestjs/common";
-import { RoleDto } from "./dto/RoleDto.dto";
-import { UserService } from "./users.service";
-import { AuthGuard } from "src/auth/guard/auth.guard";
-import { ApiTags } from "@nestjs/swagger";
-import { CreateUserDto } from "./dto/CreateUserDto.dot";
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  Query,
+  Req,
+  UseGuards,
+  ParseIntPipe,
+} from '@nestjs/common';
+import { RoleDto } from './dto/RoleDto.dto';
+import { UserService } from './users.service';
+import { AuthGuard } from 'src/auth/guard/auth.guard';
+import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { CreateUserDto } from './dto/CreateUserDto.dot';
+import { UpdateUserDto } from './dto/UpdateUserDto.dto';
+import { ChangePasswordDto } from './dto/ChangePasswordDto.dto';
 
-@Controller("user")
-@ApiTags("User")
+@Controller('user')
+@ApiTags('User')
 export class UserController {
   constructor(private userService: UserService) {}
 
-  @Post("create")
+  @Post('create')
+  @ApiOperation({ summary: 'Create a new user' })
   async create(@Body() createUserDto: CreateUserDto) {
     return this.userService.createUser(createUserDto);
   }
 
-  @Post("assign_role")
-  async assignRole(@Body() dto: RoleDto) {
-    return this.userService.assignRole(dto);
+  @UseGuards(AuthGuard)
+  @Get('list')
+  @ApiOperation({ summary: 'List all users with pagination' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  async findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.userService.findAll(
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 10,
+      search,
+    );
   }
 
   @UseGuards(AuthGuard)
-  @Get("profile")
+  @Get('profile')
+  @ApiOperation({ summary: 'Get current user profile' })
   async profile(@Req() request: any) {
     return await this.userService.profile(request?.user);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get(':id')
+  @ApiOperation({ summary: 'Get user by ID' })
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.userService.findOne(id);
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update a user' })
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateUserDto,
+  ) {
+    return this.userService.updateUser(id, dto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a user' })
+  async delete(@Param('id', ParseIntPipe) id: number) {
+    return this.userService.deleteUser(id);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('change-password')
+  @ApiOperation({ summary: 'Change current user password' })
+  async changePassword(@Req() request: any, @Body() dto: ChangePasswordDto) {
+    return this.userService.changePassword(request.user.sub, dto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch('profile/update')
+  @ApiOperation({ summary: 'Update current user profile' })
+  async updateProfile(@Req() request: any, @Body() dto: UpdateUserDto) {
+    return this.userService.updateUser(request.user.sub, dto);
+  }
+
+  @Post('assign_role')
+  @ApiOperation({ summary: 'Assign role to user' })
+  async assignRole(@Body() dto: RoleDto) {
+    return this.userService.assignRole(dto);
   }
 }

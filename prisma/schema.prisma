@@ -100,3 +100,47 @@ enum ArchiveType {
   in
   out
 }
+
+enum LicenseType {
+  SMALL
+  LARGE
+}
+
+enum LicenseStatus {
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+}
+
+model License {
+  id            String        @id @default(uuid())
+  licenseNumber String
+  companyName   String
+  licenseType   LicenseType
+  issueDate     DateTime
+  expiryDate    DateTime
+  status        LicenseStatus
+  province      String
+  district      String
+  createdBy     String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  contracts     Contract[]
+
+  @@map("licenses")
+}
+
+model Contract {
+  id         String   @id @default(uuid())
+  licenseId  String
+  fileName   String
+  fileUrl    String
+  fileType   String
+  uploadedBy String
+  uploadedAt DateTime @default(now())
+
+  license License @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+
+  @@map("contracts")
+}

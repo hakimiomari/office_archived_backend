@@ -17,11 +17,12 @@ export class SignInProvider {
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
     private readonly hashingProvider: HashingProvider,
-    private readonly tokenProvider: TokenProvider
+    private readonly tokenProvider: TokenProvider,
   ) {}
 
   public async signIn(signInDto: SignInDto, response: Response) {
     const user = await this.userService.findOneByEmail(signInDto.email);
+    console.log(user);
     if (!user) {
       throw new ForbiddenException("Invalid Credentials");
     }
@@ -29,7 +30,7 @@ export class SignInProvider {
     try {
       isEqual = await this.hashingProvider.verifyPassword(
         signInDto.password,
-        user.password
+        user.password,
       );
     } catch (error) {
       throw new RequestTimeoutException(error, {
@@ -45,7 +46,7 @@ export class SignInProvider {
       user.id,
       user.email,
       role,
-      permissions
+      permissions,
     );
     response.cookie("refresh_token", refresh_token, {
       httpOnly: true,
