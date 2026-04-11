@@ -10,13 +10,19 @@ import {
   Req,
   UseGuards,
   ParseIntPipe,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { RoleDto } from './dto/RoleDto.dto';
 import { UserService } from './users.service';
 import { AuthGuard } from 'src/auth/guard/auth.guard';
 import { PermissionGuard } from 'src/guard/permissions.guard';
 import { Permissions } from 'src/guard/permissions.decorator';
-import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiQuery, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { CreateUserDto } from './dto/CreateUserDto.dot';
 import { UpdateUserDto } from './dto/UpdateUserDto.dto';
 import { ChangePasswordDto } from './dto/ChangePasswordDto.dto';
@@ -99,6 +105,32 @@ export class UserController {
   @ApiOperation({ summary: 'Update current user profile' })
   async updateProfile(@Req() request: any, @Body() dto: UpdateUserDto) {
     return this.userService.updateUser(request.user.sub, dto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('profile/upload-picture')
+  @ApiOperation({ summary: 'Upload profile picture' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadProfilePicture(
+    @Req() request: any,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: /^image\/(jpeg|png|gif|webp)$/ }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    return this.userService.uploadProfilePicture(request.user.sub, file);
   }
 
   @UseGuards(AuthGuard, PermissionGuard)

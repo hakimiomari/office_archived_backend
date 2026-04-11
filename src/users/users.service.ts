@@ -14,6 +14,7 @@ import { FindOneByGoogleIdProvider } from './providers/find-one-by-google-id.pro
 import { CrcreateGoogleUserProvider } from './providers/crcreate-google-user.provider';
 import { GoogleUserInterface } from './interfaces/google-user.interface';
 import { HashingProvider } from 'src/auth/providers/hashing.provider';
+import { MinioService } from 'src/minio/minio.service';
 
 @Injectable()
 export class UserService {
@@ -24,6 +25,7 @@ export class UserService {
     private readonly findOneByGoogleIdProvider: FindOneByGoogleIdProvider,
     private readonly crcreateGoogleUserProvider: CrcreateGoogleUserProvider,
     private readonly hashingProvider: HashingProvider,
+    private readonly minioService: MinioService,
   ) {}
 
   /** Register a new user */
@@ -243,6 +245,22 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
     return { user };
+  }
+
+  /** Upload profile picture */
+  async uploadProfilePicture(userId: number, file: Express.Multer.File) {
+    await this.findOne(userId);
+    const { url } = await this.minioService.upload(file, 'profile-pictures');
+    return this.prismaService.user.update({
+      where: { id: userId },
+      data: { profile_picture: url },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        profile_picture: true,
+      },
+    });
   }
 
   async findOneByEmail(email: string) {
