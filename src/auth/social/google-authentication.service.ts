@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
+import { Inject, Injectable, OnModuleInit, BadRequestException } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
 import { OAuth2Client } from "google-auth-library";
 import googleAuthConfig from "../config/google-auth.config";
@@ -25,19 +25,60 @@ export class GoogleAuthenticationService implements OnModuleInit {
     this.oauthClient = new OAuth2Client(clientID, clientSecret);
   }
 
+  private async getGoogleUserInfo(
+    googleTokenDto: GoogleTokenDto
+  ): Promise<{
+    googleId: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    picture: string;
+  }> {
+    // Try ID token first (from GoogleLogin component / One Tap)
+    if (googleTokenDto.token.includes(".")) {
+      try {
+        const loginTicket = await this.oauthClient.verifyIdToken({
+          idToken: googleTokenDto.token,
+        });
+        const payload = loginTicket.getPayload();
+        return {
+          googleId: payload?.sub ?? "",
+          email: payload?.email ?? "",
+          first_name: payload?.given_name ?? "",
+          last_name: payload?.family_name ?? "",
+          picture: payload?.picture ?? "",
+        };
+      } catch {}
+    }
+
+    // Fall back to access token (from useGoogleLogin)
+    try {
+      const res = await fetch(
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+        {
+          headers: { Authorization: `Bearer ${googleTokenDto.token}` },
+        }
+      );
+      if (!res.ok) throw new Error("Failed to fetch user info");
+      const data = await res.json();
+      return {
+        googleId: data.sub ?? "",
+        email: data.email ?? "",
+        first_name: data.given_name ?? "",
+        last_name: data.family_name ?? "",
+        picture: data.picture ?? "",
+      };
+    } catch {
+      throw new BadRequestException("Invalid Google token");
+    }
+  }
+
   public async authentication(
     googleTokenDto: GoogleTokenDto,
     response: Response
   ) {
-    const loginTicket = await this.oauthClient.verifyIdToken({
-      idToken: googleTokenDto.token,
-    });
-
-    const googleId = loginTicket.getPayload()?.sub;
-    const email = loginTicket.getPayload()?.email;
-    const first_name = loginTicket.getPayload()?.given_name;
-    const last_name = loginTicket.getPayload()?.family_name;
-    const picture = loginTicket.getPayload()?.picture;
+    const { googleId, email, first_name, last_name, picture } =
+      await this.getGoogleUserInfo(googleTokenDto);
 
     const user = await this.userService.findOneByGoogleId(googleId);
 
@@ -76,10 +117,10 @@ export class GoogleAuthenticationService implements OnModuleInit {
     }
 
     const userData = {
-      googleId: googleId ?? "",
-      email: email ?? "",
+      googleId: googleId,
+      email: email,
       name: `${first_name} ${last_name}`,
-      profile_picture: picture ?? "",
+      profile_picture: picture,
     };
     const newUser = await this.userService.createGoogleUser(userData);
 
