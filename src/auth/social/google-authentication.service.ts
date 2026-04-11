@@ -42,12 +42,19 @@ export class GoogleAuthenticationService implements OnModuleInit {
     const user = await this.userService.findOneByGoogleId(googleId);
 
     if (user) {
+      // Extract permissions from all roles
+      const allPermissions = user.roles.flatMap((r: any) => r.permissions || []);
+      const uniquePermissions = [
+        ...new Map(allPermissions.map((p: any) => [p.name, p])).values(),
+      ];
+      const roleNames = user.roles.map((r: any) => r.name);
+
       const { access_token, refresh_token } =
         await this.tokenProvider.getTokens(
           user.id,
           user.email,
-          user.roles[0].name,
-          user.permissions
+          roleNames,
+          uniquePermissions
         );
 
       response.cookie("refresh_token", refresh_token, {
@@ -74,14 +81,21 @@ export class GoogleAuthenticationService implements OnModuleInit {
       name: `${first_name} ${last_name}`,
       profile_picture: picture ?? "",
     };
-    const permissions = [];
     const newUser = await this.userService.createGoogleUser(userData);
+
+    // Fetch the newly created user with role permissions
+    const createdUser = await this.userService.findOneByGoogleId(newUser.googleId);
+    const newPermissions = createdUser?.roles.flatMap((r: any) => r.permissions || []) ?? [];
+    const uniqueNewPermissions = [
+      ...new Map(newPermissions.map((p: any) => [p.name, p])).values(),
+    ];
+    const newRoleNames = createdUser?.roles.map((r: any) => r.name) ?? ["user"];
 
     const { access_token, refresh_token } = await this.tokenProvider.getTokens(
       newUser.id,
       newUser.email,
-      newUser.roles[0].name,
-      permissions
+      newRoleNames,
+      uniqueNewPermissions
     );
 
     response.cookie("refresh_token", refresh_token, {

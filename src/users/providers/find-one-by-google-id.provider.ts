@@ -11,8 +11,11 @@ export class FindOneByGoogleIdProvider {
         googleId: googleId,
       },
       include: {
-        roles: true,
-        permissions: true,
+        roles: {
+          include: {
+            permissions: true,
+          },
+        },
       },
     });
   }
