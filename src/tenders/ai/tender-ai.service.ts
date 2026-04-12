@@ -97,7 +97,7 @@ You MUST respond with ONLY a valid JSON object — no markdown, no commentary, n
 
 The JSON object MUST have these exact keys:
 {
-  "type": "TENDER" | "CONSULTING" | "AUCTION" | "NOTICE" | "OTHER",
+  "type": "TENDER" | "CONSULTING" | "AUCTION" | "NOTICE" | "ANNOUNCEMENT" | "OTHER",
   "sector": "MINING" | "OIL" | "GAS" | "CONSULTING" | "OTHER",
   "summary": string (1-2 sentences in plain English, max 200 chars),
   "tags": string[] (3-6 short tags like "high-value", "urgent", "consultancy", "exploration", "feasibility"),
@@ -105,10 +105,11 @@ The JSON object MUST have these exact keys:
 }
 
 Type meanings:
-- TENDER: standard procurement tender notice
+- TENDER: standard procurement tender notice with bidding
 - CONSULTING: expressions of interest, consultancy services, expert hire
 - AUCTION: mineral/asset auction (e.g., emerald auction)
-- NOTICE: general notice without bidding
+- NOTICE: a generic public notice (not an announcement, not a bid)
+- ANNOUNCEMENT: official ministry announcement, award notification, accreditation invitation, public information release
 - OTHER: anything else
 
 Sector meanings:
@@ -217,6 +218,14 @@ Respond with the JSON object only.`;
     else if (text.includes('consultanc') || text.includes('consultant'))
       type = TenderType.CONSULTING;
     else if (text.includes('auction')) type = TenderType.AUCTION;
+    else if (
+      text.includes('notification of intention to award') ||
+      text.includes('invitation to apply') ||
+      text.includes('accreditation') ||
+      text.includes('announcement') ||
+      text.includes('award')
+    )
+      type = TenderType.ANNOUNCEMENT;
     else if (text.includes('notice')) type = TenderType.NOTICE;
     else if (text.includes('tender')) type = TenderType.TENDER;
 

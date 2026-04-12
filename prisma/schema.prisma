@@ -152,6 +152,7 @@ enum TenderType {
   CONSULTING
   AUCTION
   NOTICE
+  ANNOUNCEMENT
   OTHER
 }
 
@@ -174,6 +175,12 @@ enum TenderActivityAction {
   IGNORED
   ASSIGNED
   NOTIFIED
+}
+
+enum TenderLanguage {
+  EN
+  PS
+  FA
 }
 
 model Organization {
@@ -199,6 +206,7 @@ model Tender {
   sector         TenderSector  @default(OTHER)
   type           TenderType    @default(TENDER)
   status         TenderStatus  @default(OPEN)
+  language       TenderLanguage @default(EN)
   projectName    String?
   location       String?
   attachments    Json?
@@ -216,6 +224,7 @@ model Tender {
   @@index([type])
   @@index([sector])
   @@index([publishDate])
+  @@index([language])
   @@map("tenders")
 }
 

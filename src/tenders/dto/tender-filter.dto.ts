@@ -8,7 +8,12 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { TenderSector, TenderStatus, TenderType } from './create-tender.dto';
+import {
+  TenderLanguage,
+  TenderSector,
+  TenderStatus,
+  TenderType,
+} from './create-tender.dto';
 
 export class TenderFilterDto {
   @ApiPropertyOptional({ default: 1 })
@@ -44,6 +49,11 @@ export class TenderFilterDto {
   @IsOptional()
   @IsEnum(TenderType)
   type?: TenderType;
+
+  @ApiPropertyOptional({ enum: TenderLanguage })
+  @IsOptional()
+  @IsEnum(TenderLanguage)
+  language?: TenderLanguage;
 
   @ApiPropertyOptional({ description: 'Filter tenders with closing date from this date' })
   @IsOptional()

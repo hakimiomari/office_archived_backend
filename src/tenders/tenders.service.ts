@@ -136,6 +136,7 @@ export class TendersService {
     if (filters.status) AND.push({ status: filters.status });
     if (filters.sector) AND.push({ sector: filters.sector });
     if (filters.type) AND.push({ type: filters.type });
+    if (filters.language) AND.push({ language: filters.language });
 
     if (filters.closingFrom || filters.closingTo) {
       AND.push({
@@ -361,6 +362,7 @@ export class TendersService {
     if (filters.status) AND.push({ status: filters.status });
     if (filters.sector) AND.push({ sector: filters.sector });
     if (filters.type) AND.push({ type: filters.type });
+    if (filters.language) AND.push({ language: filters.language });
 
     if (filters.closingFrom || filters.closingTo) {
       AND.push({

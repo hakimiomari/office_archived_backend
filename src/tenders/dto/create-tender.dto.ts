@@ -16,6 +16,7 @@ export enum TenderType {
   CONSULTING = 'CONSULTING',
   AUCTION = 'AUCTION',
   NOTICE = 'NOTICE',
+  ANNOUNCEMENT = 'ANNOUNCEMENT',
   OTHER = 'OTHER',
 }
 
@@ -30,6 +31,12 @@ export enum TenderSector {
 export enum TenderStatus {
   OPEN = 'OPEN',
   CLOSED = 'CLOSED',
+}
+
+export enum TenderLanguage {
+  EN = 'EN',
+  PS = 'PS',
+  FA = 'FA',
 }
 
 export class CreateTenderDto {
@@ -76,6 +83,11 @@ export class CreateTenderDto {
   @IsOptional()
   @IsEnum(TenderStatus)
   status?: TenderStatus;
+
+  @ApiProperty({ enum: TenderLanguage, default: TenderLanguage.EN, required: false })
+  @IsOptional()
+  @IsEnum(TenderLanguage)
+  language?: TenderLanguage;
 
   @ApiProperty({ required: false })
   @IsOptional()
