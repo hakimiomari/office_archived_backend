@@ -146,3 +146,103 @@ model Contract {
 
   @@map("contracts")
 }
+
+enum TenderType {
+  TENDER
+  CONSULTING
+  AUCTION
+  NOTICE
+  OTHER
+}
+
+enum TenderSector {
+  MINING
+  OIL
+  GAS
+  CONSULTING
+  OTHER
+}
+
+enum TenderStatus {
+  OPEN
+  CLOSED
+}
+
+enum TenderActivityAction {
+  VIEWED
+  APPLIED
+  IGNORED
+  ASSIGNED
+  NOTIFIED
+}
+
+model Organization {
+  id        Int      @id @default(autoincrement())
+  name      String
+  country   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenders Tender[]
+
+  @@map("organizations")
+}
+
+model Tender {
+  id             String        @id @default(uuid())
+  title          String
+  description    String?       @db.Text
+  sourceUrl      String        @unique
+  referenceNo    String?
+  publishDate    DateTime?
+  closingDate    DateTime?
+  sector         TenderSector  @default(OTHER)
+  type           TenderType    @default(TENDER)
+  status         TenderStatus  @default(OPEN)
+  projectName    String?
+  location       String?
+  attachments    Json?
+  priorityScore  Float?
+  organizationId Int?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  tags         TenderTag[]
+  activities   TenderActivity[]
+
+  @@index([status])
+  @@index([closingDate])
+  @@index([type])
+  @@index([sector])
+  @@index([publishDate])
+  @@map("tenders")
+}
+
+model TenderTag {
+  id       Int    @id @default(autoincrement())
+  tenderId String
+  tag      String
+
+  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@index([tenderId])
+  @@index([tag])
+  @@map("tender_tags")
+}
+
+model TenderActivity {
+  id        Int                  @id @default(autoincrement())
+  tenderId  String
+  action    TenderActivityAction
+  userId    Int?
+  notes     String?              @db.Text
+  createdAt DateTime             @default(now())
+
+  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@index([tenderId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("tender_activity")
+}
