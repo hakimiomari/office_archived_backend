@@ -604,3 +604,51 @@ model EquipmentMaintenance {
   @@index([maintenanceDate])
   @@map("equipment_maintenance")
 }
+
+// ================================================================
+//                  EMPLOYEE (HR) MODULE
+// ================================================================
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  ON_LEAVE
+  TERMINATED
+}
+
+model Department {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  employees Employee[]
+
+  @@map("departments")
+}
+
+model Employee {
+  id           Int            @id @default(autoincrement())
+  firstName    String
+  lastName     String
+  email        String?        @unique
+  phone        String?
+  departmentId Int?
+  designation  String?
+  hireDate     DateTime?
+  status       EmployeeStatus @default(ACTIVE)
+  profilePicture String?
+  address      String?
+  notes        String?        @db.Text
+  createdBy    String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([departmentId])
+  @@index([firstName, lastName])
+  @@map("employees")
+}

@@ -57,6 +57,15 @@ export class SeedService {
       { name: 'equipment.delete', group_name: 'equipment', label: 'Delete Equipment' },
       { name: 'equipment.assign', group_name: 'equipment', label: 'Assign Equipment' },
       { name: 'equipment.maintenance', group_name: 'equipment', label: 'Manage Equipment Maintenance' },
+      // Employee / HR Management
+      { name: 'employee.create', group_name: 'employee', label: 'Create Employee' },
+      { name: 'employee.read', group_name: 'employee', label: 'Read Employee' },
+      { name: 'employee.update', group_name: 'employee', label: 'Update Employee' },
+      { name: 'employee.delete', group_name: 'employee', label: 'Delete Employee' },
+      { name: 'department.create', group_name: 'employee', label: 'Create Department' },
+      { name: 'department.read', group_name: 'employee', label: 'Read Department' },
+      { name: 'department.update', group_name: 'employee', label: 'Update Department' },
+      { name: 'department.delete', group_name: 'employee', label: 'Delete Department' },
     ];
 
     for (const perm of permissions) {
@@ -117,6 +126,8 @@ export class SeedService {
       'inventory.create', 'inventory.read', 'inventory.update', 'inventory.delete', 'inventory.movement',
       'executive.read', 'executive.create', 'executive.update',
       'equipment.create', 'equipment.read', 'equipment.update', 'equipment.assign', 'equipment.maintenance',
+      'employee.create', 'employee.read', 'employee.update',
+      'department.create', 'department.read', 'department.update',
     ].map((n) => permByName(n)).filter(Boolean);
 
     await this.prismaService.role.upsert({
@@ -136,7 +147,7 @@ export class SeedService {
     // Viewer → Read-only
     const viewerPerms = [
       'license.read', 'contract.read', 'report.view', 'tender.read', 'inventory.read',
-      'executive.read', 'equipment.read',
+      'executive.read', 'equipment.read', 'employee.read', 'department.read',
     ].map((n) => permByName(n)).filter(Boolean);
 
     await this.prismaService.role.upsert({

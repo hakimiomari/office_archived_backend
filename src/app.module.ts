@@ -15,6 +15,7 @@ import { TendersModule } from "./tenders/tenders.module";
 import { InventoryModule } from "./inventory/inventory.module";
 import { ExecutiveModule } from "./executive/executive.module";
 import { EquipmentModule } from "./equipment/equipment.module";
+import { EmployeesModule } from "./employees/employees.module";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
 import refreshToken from "./config/refresh-token.config";
@@ -43,6 +44,7 @@ import environmentValidation from "./config/environment.validation";
     InventoryModule,
     ExecutiveModule,
     EquipmentModule,
+    EmployeesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
