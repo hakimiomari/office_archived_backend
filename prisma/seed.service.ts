@@ -50,6 +50,13 @@ export class SeedService {
       { name: 'executive.read', group_name: 'executive', label: 'Read Executive Dashboard' },
       { name: 'executive.update', group_name: 'executive', label: 'Update Executive KPIs' },
       { name: 'executive.delete', group_name: 'executive', label: 'Delete Executive KPIs' },
+      // Equipment Management
+      { name: 'equipment.create', group_name: 'equipment', label: 'Create Equipment' },
+      { name: 'equipment.read', group_name: 'equipment', label: 'Read Equipment' },
+      { name: 'equipment.update', group_name: 'equipment', label: 'Update Equipment' },
+      { name: 'equipment.delete', group_name: 'equipment', label: 'Delete Equipment' },
+      { name: 'equipment.assign', group_name: 'equipment', label: 'Assign Equipment' },
+      { name: 'equipment.maintenance', group_name: 'equipment', label: 'Manage Equipment Maintenance' },
     ];
 
     for (const perm of permissions) {
@@ -109,6 +116,7 @@ export class SeedService {
       'tender.create', 'tender.read', 'tender.update', 'tender.delete',
       'inventory.create', 'inventory.read', 'inventory.update', 'inventory.delete', 'inventory.movement',
       'executive.read', 'executive.create', 'executive.update',
+      'equipment.create', 'equipment.read', 'equipment.update', 'equipment.assign', 'equipment.maintenance',
     ].map((n) => permByName(n)).filter(Boolean);
 
     await this.prismaService.role.upsert({
@@ -128,7 +136,7 @@ export class SeedService {
     // Viewer → Read-only
     const viewerPerms = [
       'license.read', 'contract.read', 'report.view', 'tender.read', 'inventory.read',
-      'executive.read',
+      'executive.read', 'equipment.read',
     ].map((n) => permByName(n)).filter(Boolean);
 
     await this.prismaService.role.upsert({

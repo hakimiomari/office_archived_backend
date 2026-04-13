@@ -491,3 +491,116 @@ model MinisterTravel {
   @@index([startDate])
   @@map("minister_travels")
 }
+
+// ================================================================
+//         OFFICE EQUIPMENT / ASSET MANAGEMENT MODULE
+// ================================================================
+
+enum EquipmentCategory {
+  LAPTOP
+  DESKTOP
+  PRINTER
+  PHONE
+  FURNITURE
+  NETWORK
+  MONITOR
+  OTHER
+}
+
+enum EquipmentStatus {
+  AVAILABLE
+  ASSIGNED
+  MAINTENANCE
+  RETIRED
+}
+
+enum EquipmentCondition {
+  NEW
+  GOOD
+  FAIR
+  DAMAGED
+}
+
+enum EquipmentAssignmentStatus {
+  ASSIGNED
+  RETURNED
+}
+
+enum EquipmentMaintenanceStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Equipment {
+  id             Int                @id @default(autoincrement())
+  name           String
+  category       EquipmentCategory  @default(OTHER)
+  brand          String?
+  model          String?
+  serialNumber   String?            @unique
+  purchaseDate   DateTime?
+  purchasePrice  Float              @default(0)
+  warrantyExpiry DateTime?
+  status         EquipmentStatus    @default(AVAILABLE)
+  condition      EquipmentCondition @default(GOOD)
+  warehouseId    Int?
+  itemId         Int?
+  notes          String?            @db.Text
+  createdBy      String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  assignments  EquipmentAssignment[]
+  maintenances EquipmentMaintenance[]
+
+  @@index([status])
+  @@index([category])
+  @@index([warrantyExpiry])
+  @@index([serialNumber])
+  @@map("equipment")
+}
+
+model EquipmentAssignment {
+  id           Int                       @id @default(autoincrement())
+  equipmentId  Int
+  employeeId   Int
+  employeeName String?
+  assignedDate DateTime                  @default(now())
+  returnDate   DateTime?
+  status       EquipmentAssignmentStatus @default(ASSIGNED)
+  remarks      String?                   @db.Text
+  createdBy    String?
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  @@index([equipmentId])
+  @@index([employeeId])
+  @@index([status])
+  @@map("equipment_assignments")
+}
+
+model EquipmentMaintenance {
+  id              Int                        @id @default(autoincrement())
+  equipmentId     Int
+  issue           String                     @db.Text
+  cost            Float                      @default(0)
+  maintenanceDate DateTime                   @default(now())
+  completedDate   DateTime?
+  vendor          String?
+  status          EquipmentMaintenanceStatus @default(PENDING)
+  notes           String?                    @db.Text
+  createdBy       String?
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  @@index([equipmentId])
+  @@index([status])
+  @@index([maintenanceDate])
+  @@map("equipment_maintenance")
+}
