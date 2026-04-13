@@ -13,6 +13,7 @@ import { RolesModule } from "./roles/roles.module";
 import { MinioModule } from "./minio/minio.module";
 import { TendersModule } from "./tenders/tenders.module";
 import { InventoryModule } from "./inventory/inventory.module";
+import { ExecutiveModule } from "./executive/executive.module";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
 import refreshToken from "./config/refresh-token.config";
@@ -39,6 +40,7 @@ import environmentValidation from "./config/environment.validation";
     RolesModule,
     TendersModule,
     InventoryModule,
+    ExecutiveModule,
   ],
   controllers: [AppController],
   providers: [AppService],

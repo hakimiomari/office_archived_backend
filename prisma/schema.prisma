@@ -421,3 +421,73 @@ model PurchaseItem {
   @@index([itemId])
   @@map("purchase_items")
 }
+
+// ================================================================
+//                EXECUTIVE DASHBOARD & MANUAL KPI MODULE
+// ================================================================
+
+enum KpiCategory {
+  FINANCIAL
+  CONTRACT
+  TRAVEL
+  OPERATIONAL
+  OTHER
+}
+
+enum TravelType {
+  DOMESTIC
+  INTERNATIONAL
+}
+
+model DashboardKpi {
+  id          Int         @id @default(autoincrement())
+  key         String
+  value       Float
+  year        Int
+  category    KpiCategory @default(OTHER)
+  label       String?
+  description String?     @db.Text
+  createdBy   String?
+  updatedBy   String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([key, year])
+  @@index([year])
+  @@index([category])
+  @@map("dashboard_kpis")
+}
+
+model ContractsSummary {
+  id                  Int      @id @default(autoincrement())
+  year                Int      @unique
+  totalContracts      Int      @default(0)
+  activeContracts     Int      @default(0)
+  suspendedContracts  Int      @default(0)
+  cancelledContracts  Int      @default(0)
+  notes               String?  @db.Text
+  createdBy           String?
+  updatedBy           String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([year])
+  @@map("contracts_summary")
+}
+
+model MinisterTravel {
+  id          Int        @id @default(autoincrement())
+  type        TravelType
+  destination String
+  purpose     String?    @db.Text
+  startDate   DateTime
+  endDate     DateTime?
+  cost        Float      @default(0)
+  createdBy   String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([type])
+  @@index([startDate])
+  @@map("minister_travels")
+}
