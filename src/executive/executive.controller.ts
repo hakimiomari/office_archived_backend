@@ -21,6 +21,7 @@ import { CreateKpiDto, UpdateKpiDto, KpiFilterDto } from './dto/kpi.dto';
 import {
   CreateContractsSummaryDto,
   UpdateContractsSummaryDto,
+  ContractsSummaryFilterDto,
 } from './dto/contracts-summary.dto';
 import {
   CreateTravelDto,
@@ -124,8 +125,8 @@ export class ExecutiveController {
   @Get('contracts-summary')
   @Permissions('executive.read')
   @ApiOperation({ summary: 'List all yearly contracts summaries' })
-  listContractsSummaries() {
-    return this.executive.findAllContractsSummaries();
+  listContractsSummaries(@Query() filters: ContractsSummaryFilterDto) {
+    return this.executive.findAllContractsSummaries(filters);
   }
 
   @Get('contracts-summary/:year')

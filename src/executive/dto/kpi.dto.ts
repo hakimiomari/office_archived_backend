@@ -52,6 +52,20 @@ export class CreateKpiDto {
 export class UpdateKpiDto extends PartialType(CreateKpiDto) {}
 
 export class KpiFilterDto {
+  @ApiProperty({ required: false, default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiProperty({ required: false, default: 10 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit?: number;
+
   @ApiProperty({ required: false })
   @IsOptional()
   @Type(() => Number)

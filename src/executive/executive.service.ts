@@ -9,6 +9,7 @@ import { CreateKpiDto, UpdateKpiDto, KpiFilterDto } from './dto/kpi.dto';
 import {
   CreateContractsSummaryDto,
   UpdateContractsSummaryDto,
+  ContractsSummaryFilterDto,
 } from './dto/contracts-summary.dto';
 import {
   CreateTravelDto,
@@ -54,13 +55,28 @@ export class ExecutiveService {
   }
 
   async findAllKpis(filters: KpiFilterDto) {
+    const page = filters.page ?? 1;
+    const limit = filters.limit ?? 10;
+    const skip = (page - 1) * limit;
+
     const where: Prisma.DashboardKpiWhereInput = {};
     if (filters.year) where.year = filters.year;
     if (filters.category) where.category = filters.category;
-    return this.prisma.dashboardKpi.findMany({
-      where,
-      orderBy: [{ year: 'desc' }, { category: 'asc' }, { key: 'asc' }],
-    });
+
+    const [data, total] = await Promise.all([
+      this.prisma.dashboardKpi.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: [{ year: 'desc' }, { category: 'asc' }, { key: 'asc' }],
+      }),
+      this.prisma.dashboardKpi.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async findOneKpi(id: number) {
@@ -113,10 +129,28 @@ export class ExecutiveService {
     });
   }
 
-  async findAllContractsSummaries() {
-    return this.prisma.contractsSummary.findMany({
-      orderBy: { year: 'desc' },
-    });
+  async findAllContractsSummaries(filters: ContractsSummaryFilterDto = {}) {
+    const page = filters.page ?? 1;
+    const limit = filters.limit ?? 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ContractsSummaryWhereInput = {};
+    if (filters.year) where.year = filters.year;
+
+    const [data, total] = await Promise.all([
+      this.prisma.contractsSummary.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { year: 'desc' },
+      }),
+      this.prisma.contractsSummary.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async findOneContractsSummary(year: number) {
