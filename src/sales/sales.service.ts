@@ -69,12 +69,45 @@ export class SalesService {
       include: {
         sales: {
           orderBy: { saleDate: 'desc' },
-          take: 20,
+          take: 50,
+          include: {
+            items: { include: { item: true } },
+          },
         },
       },
     });
     if (!customer) throw new NotFoundException(`Customer ${id} not found`);
-    return customer;
+
+    const [totals, payments] = await Promise.all([
+      this.prisma.sale.aggregate({
+        where: { customerId: id, saleStatus: 'COMPLETED' },
+        _sum: {
+          totalAmount: true,
+          paidAmount: true,
+          remainingAmount: true,
+        },
+        _count: { id: true },
+      }),
+      this.prisma.payment.findMany({
+        where: { sale: { customerId: id } },
+        include: {
+          sale: { select: { id: true, invoiceNo: true } },
+        },
+        orderBy: { paymentDate: 'desc' },
+        take: 50,
+      }),
+    ]);
+
+    return {
+      ...customer,
+      stats: {
+        salesCount: totals._count.id,
+        totalSpent: totals._sum.totalAmount ?? 0,
+        totalPaid: totals._sum.paidAmount ?? 0,
+        totalRemaining: totals._sum.remainingAmount ?? 0,
+      },
+      recentPayments: payments,
+    };
   }
 
   async updateCustomer(id: number, dto: UpdateCustomerDto) {
