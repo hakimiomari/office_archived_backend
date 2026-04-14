@@ -110,13 +110,6 @@ export class EmployeesController {
     return this.employees.findOneEmployee(id);
   }
 
-  @Get(':id/equipment')
-  @Permissions('employee.read')
-  @ApiOperation({ summary: 'Get equipment assigned to an employee' })
-  getEmployeeEquipment(@Param('id', ParseIntPipe) id: number) {
-    return this.employees.getEmployeeEquipment(id);
-  }
-
   @Patch(':id')
   @Permissions('employee.update')
   @ApiOperation({ summary: 'Update an employee' })

@@ -39,8 +39,6 @@ model User {
   updatedUsers User[] @relation("UserUpdatedBy")
 
   created_roles    Role[] @relation("CreatedRoles")
-  archives_update_by Archives[] @relation("archived_updated_by")
-  archives_created_by Archives[] @relation("archived_created_by")
 
   @@map("users") // This is optional, but if you want to map it to 'users', you can use this
 
@@ -76,187 +74,6 @@ model Permission {
   @@map("permissions")
 }
 
-model Archives {
-  id        Int      @id @default(autoincrement())
-  memo     String
-  title      String
-  register_number String
-  date_exported_or_received      DateTime
-  note      String
-  file_number      Int
-  archive_category  String
-  type      ArchiveType @default(in)
-  created_at     DateTime @default(now())
-  created_by Int
-  updated_at DateTime @updatedAt
-  updated_by Int
-  archived_created_by User? @relation("archived_created_by",fields: [created_by], references: [id], onUpdate: NoAction)
-  archived_updated_by User? @relation("archived_updated_by",fields: [updated_by], references: [id], onUpdate: NoAction)
-
- @@index([created_by, title, register_number, date_exported_or_received])
- @@map("archives")
-
-}
-
-enum ArchiveType {
-  in
-  out
-}
-
-enum LicenseType {
-  SMALL
-  LARGE
-}
-
-enum LicenseStatus {
-  ACTIVE
-  EXPIRED
-  SUSPENDED
-}
-
-model License {
-  id            String        @id @default(uuid())
-  licenseNumber String
-  companyName   String
-  licenseType   LicenseType
-  issueDate     DateTime
-  expiryDate    DateTime
-  status        LicenseStatus
-  province      String
-  district      String
-  createdBy     String
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  contracts     Contract[]
-
-  @@map("licenses")
-}
-
-model Contract {
-  id         String   @id @default(uuid())
-  licenseId  String
-  fileName   String
-  fileUrl    String
-  fileType   String
-  uploadedBy String
-  uploadedAt DateTime @default(now())
-
-  license License @relation(fields: [licenseId], references: [id], onDelete: Cascade)
-
-  @@map("contracts")
-}
-
-enum TenderType {
-  TENDER
-  CONSULTING
-  AUCTION
-  NOTICE
-  ANNOUNCEMENT
-  OTHER
-}
-
-enum TenderSector {
-  MINING
-  OIL
-  GAS
-  CONSULTING
-  OTHER
-}
-
-enum TenderStatus {
-  OPEN
-  CLOSED
-}
-
-enum TenderActivityAction {
-  VIEWED
-  APPLIED
-  IGNORED
-  ASSIGNED
-  NOTIFIED
-}
-
-enum TenderLanguage {
-  EN
-  PS
-  FA
-}
-
-model Organization {
-  id        Int      @id @default(autoincrement())
-  name      String
-  country   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  tenders Tender[]
-
-  @@map("organizations")
-}
-
-model Tender {
-  id             String        @id @default(uuid())
-  title          String
-  description    String?       @db.Text
-  sourceUrl      String        @unique
-  referenceNo    String?
-  publishDate    DateTime?
-  closingDate    DateTime?
-  sector         TenderSector  @default(OTHER)
-  type           TenderType    @default(TENDER)
-  status         TenderStatus  @default(OPEN)
-  language       TenderLanguage @default(EN)
-  projectName    String?
-  location       String?
-  attachments    Json?
-  priorityScore  Float?
-  organizationId Int?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-
-  organization   Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  tags           TenderTag[]
-  activities     TenderActivity[]
-  stockMovements StockMovement[]
-
-  @@index([status])
-  @@index([closingDate])
-  @@index([type])
-  @@index([sector])
-  @@index([publishDate])
-  @@index([language])
-  @@map("tenders")
-}
-
-model TenderTag {
-  id       Int    @id @default(autoincrement())
-  tenderId String
-  tag      String
-
-  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
-
-  @@index([tenderId])
-  @@index([tag])
-  @@map("tender_tags")
-}
-
-model TenderActivity {
-  id        Int                  @id @default(autoincrement())
-  tenderId  String
-  action    TenderActivityAction
-  userId    Int?
-  notes     String?              @db.Text
-  createdAt DateTime             @default(now())
-
-  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
-
-  @@index([tenderId])
-  @@index([action])
-  @@index([createdAt])
-  @@map("tender_activity")
-}
-
 // ================================================================
 //                     INVENTORY MANAGEMENT MODULE
 // ================================================================
@@ -279,7 +96,7 @@ enum StockMovementType {
 
 enum StockMovementReference {
   PURCHASE
-  TENDER
+  SALE
   MANUAL
   TRANSFER
   ADJUSTMENT
@@ -292,19 +109,22 @@ enum PurchaseStatus {
 }
 
 model Item {
-  id          Int          @id @default(autoincrement())
-  name        String
-  sku         String?      @unique
-  category    ItemCategory @default(OTHER)
-  unit        String       @default("pcs")
-  description String?      @db.Text
-  minStock    Float        @default(0)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id            Int          @id @default(autoincrement())
+  name          String
+  sku           String?      @unique
+  category      ItemCategory @default(OTHER)
+  unit          String       @default("pcs")
+  description   String?      @db.Text
+  minStock      Float        @default(0)
+  salePrice     Float        @default(0)
+  purchasePrice Float        @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   stocks        InventoryStock[]
   movements     StockMovement[]
   purchaseItems PurchaseItem[]
+  saleItems     SaleItem[]
 
   @@index([category])
   @@index([name])
@@ -350,7 +170,6 @@ model StockMovement {
   targetWarehouseId Int?
   referenceType     StockMovementReference @default(MANUAL)
   referenceId       Int?
-  tenderId          String?
   purchaseId        Int?
   userId            Int?
   notes             String?                @db.Text
@@ -359,13 +178,11 @@ model StockMovement {
   item             Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
   sourceWarehouse  Warehouse? @relation("SourceWarehouse", fields: [sourceWarehouseId], references: [id], onDelete: SetNull)
   targetWarehouse  Warehouse? @relation("TargetWarehouse", fields: [targetWarehouseId], references: [id], onDelete: SetNull)
-  tender           Tender?    @relation(fields: [tenderId], references: [id], onDelete: SetNull)
   purchase         Purchase?  @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
 
   @@index([itemId])
   @@index([type])
   @@index([createdAt])
-  @@index([tenderId])
   @@index([purchaseId])
   @@map("stock_movements")
 }
@@ -377,34 +194,62 @@ model Supplier {
   email     String?
   phone     String?
   address   String?
+  totalOwed Float    @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   purchases Purchase[]
+  payments  SupplierPayment[]
 
   @@map("suppliers")
 }
 
 model Purchase {
-  id           Int            @id @default(autoincrement())
-  supplierId   Int?
-  referenceNo  String?
-  totalAmount  Float          @default(0)
-  purchaseDate DateTime       @default(now())
-  status       PurchaseStatus @default(PENDING)
-  notes        String?        @db.Text
-  createdBy    String?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id              Int            @id @default(autoincrement())
+  supplierId      Int?
+  referenceNo     String?
+  totalAmount     Float          @default(0)
+  paidAmount      Float          @default(0)
+  remainingAmount Float          @default(0)
+  paymentStatus   PaymentStatus  @default(UNPAID)
+  purchaseDate    DateTime       @default(now())
+  status          PurchaseStatus @default(PENDING)
+  notes           String?        @db.Text
+  createdBy       String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
-  supplier  Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  supplier  Supplier?         @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   items     PurchaseItem[]
   movements StockMovement[]
+  payments  SupplierPayment[]
 
   @@index([supplierId])
   @@index([status])
+  @@index([paymentStatus])
   @@index([purchaseDate])
   @@map("purchases")
+}
+
+model SupplierPayment {
+  id          Int           @id @default(autoincrement())
+  supplierId  Int
+  purchaseId  Int?
+  amount      Float
+  method      PaymentMethod @default(CASH)
+  paymentDate DateTime      @default(now())
+  referenceNo String?
+  notes       String?       @db.Text
+  createdBy   String?
+  createdAt   DateTime      @default(now())
+
+  supplier Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  purchase Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+
+  @@index([supplierId])
+  @@index([purchaseId])
+  @@index([paymentDate])
+  @@map("supplier_payments")
 }
 
 model PurchaseItem {
@@ -420,189 +265,6 @@ model PurchaseItem {
   @@index([purchaseId])
   @@index([itemId])
   @@map("purchase_items")
-}
-
-// ================================================================
-//                EXECUTIVE DASHBOARD & MANUAL KPI MODULE
-// ================================================================
-
-enum KpiCategory {
-  FINANCIAL
-  CONTRACT
-  TRAVEL
-  OPERATIONAL
-  OTHER
-}
-
-enum TravelType {
-  DOMESTIC
-  INTERNATIONAL
-}
-
-model DashboardKpi {
-  id          Int         @id @default(autoincrement())
-  key         String
-  value       Float
-  year        Int
-  category    KpiCategory @default(OTHER)
-  label       String?
-  description String?     @db.Text
-  createdBy   String?
-  updatedBy   String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  @@unique([key, year])
-  @@index([year])
-  @@index([category])
-  @@map("dashboard_kpis")
-}
-
-model ContractsSummary {
-  id                  Int      @id @default(autoincrement())
-  year                Int      @unique
-  totalContracts      Int      @default(0)
-  activeContracts     Int      @default(0)
-  suspendedContracts  Int      @default(0)
-  cancelledContracts  Int      @default(0)
-  notes               String?  @db.Text
-  createdBy           String?
-  updatedBy           String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-
-  @@index([year])
-  @@map("contracts_summary")
-}
-
-model MinisterTravel {
-  id          Int        @id @default(autoincrement())
-  type        TravelType
-  destination String
-  purpose     String?    @db.Text
-  startDate   DateTime
-  endDate     DateTime?
-  cost        Float      @default(0)
-  createdBy   String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-
-  @@index([type])
-  @@index([startDate])
-  @@map("minister_travels")
-}
-
-// ================================================================
-//         OFFICE EQUIPMENT / ASSET MANAGEMENT MODULE
-// ================================================================
-
-enum EquipmentCategory {
-  LAPTOP
-  DESKTOP
-  PRINTER
-  PHONE
-  FURNITURE
-  NETWORK
-  MONITOR
-  OTHER
-}
-
-enum EquipmentStatus {
-  AVAILABLE
-  ASSIGNED
-  MAINTENANCE
-  RETIRED
-}
-
-enum EquipmentCondition {
-  NEW
-  GOOD
-  FAIR
-  DAMAGED
-}
-
-enum EquipmentAssignmentStatus {
-  ASSIGNED
-  RETURNED
-}
-
-enum EquipmentMaintenanceStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
-model Equipment {
-  id             Int                @id @default(autoincrement())
-  name           String
-  category       EquipmentCategory  @default(OTHER)
-  brand          String?
-  model          String?
-  serialNumber   String?            @unique
-  purchaseDate   DateTime?
-  purchasePrice  Float              @default(0)
-  warrantyExpiry DateTime?
-  status         EquipmentStatus    @default(AVAILABLE)
-  condition      EquipmentCondition @default(GOOD)
-  warehouseId    Int?
-  itemId         Int?
-  notes          String?            @db.Text
-  createdBy      String?
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-
-  assignments  EquipmentAssignment[]
-  maintenances EquipmentMaintenance[]
-
-  @@index([status])
-  @@index([category])
-  @@index([warrantyExpiry])
-  @@index([serialNumber])
-  @@map("equipment")
-}
-
-model EquipmentAssignment {
-  id           Int                       @id @default(autoincrement())
-  equipmentId  Int
-  employeeId   Int
-  employeeName String?
-  assignedDate DateTime                  @default(now())
-  returnDate   DateTime?
-  status       EquipmentAssignmentStatus @default(ASSIGNED)
-  remarks      String?                   @db.Text
-  createdBy    String?
-  createdAt    DateTime                  @default(now())
-  updatedAt    DateTime                  @updatedAt
-
-  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
-
-  @@index([equipmentId])
-  @@index([employeeId])
-  @@index([status])
-  @@map("equipment_assignments")
-}
-
-model EquipmentMaintenance {
-  id              Int                        @id @default(autoincrement())
-  equipmentId     Int
-  issue           String                     @db.Text
-  cost            Float                      @default(0)
-  maintenanceDate DateTime                   @default(now())
-  completedDate   DateTime?
-  vendor          String?
-  status          EquipmentMaintenanceStatus @default(PENDING)
-  notes           String?                    @db.Text
-  createdBy       String?
-  createdAt       DateTime                   @default(now())
-  updatedAt       DateTime                   @updatedAt
-
-  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
-
-  @@index([equipmentId])
-  @@index([status])
-  @@index([maintenanceDate])
-  @@map("equipment_maintenance")
 }
 
 // ================================================================
@@ -646,9 +308,127 @@ model Employee {
   updatedAt    DateTime       @updatedAt
 
   department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  sales      Sale[]
+  payments   Payment[]
 
   @@index([status])
   @@index([departmentId])
   @@index([firstName, lastName])
   @@map("employees")
+}
+
+// ================================================================
+//             SALES / BILLING / PAYMENTS MODULE
+// ================================================================
+
+enum PaymentStatus {
+  PAID
+  PARTIAL
+  UNPAID
+}
+
+enum PaymentMethod {
+  CASH
+  BANK
+  MOBILE
+  CREDIT
+  OTHER
+}
+
+enum SaleStatus {
+  COMPLETED
+  CANCELLED
+}
+
+model Customer {
+  id          Int      @id @default(autoincrement())
+  name        String
+  phone       String?
+  email       String?
+  address     String?
+  creditLimit Float    @default(0)
+  totalOwed   Float    @default(0)
+  notes       String?  @db.Text
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sales Sale[]
+
+  @@index([name])
+  @@index([phone])
+  @@map("customers")
+}
+
+model Sale {
+  id              Int           @id @default(autoincrement())
+  invoiceNo       String        @unique
+  customerId      Int?
+  warehouseId     Int
+  employeeId      Int?
+  subtotal        Float         @default(0)
+  discount        Float         @default(0)
+  tax             Float         @default(0)
+  totalAmount     Float         @default(0)
+  paidAmount      Float         @default(0)
+  remainingAmount Float         @default(0)
+  paymentStatus   PaymentStatus @default(UNPAID)
+  paymentMethod   PaymentMethod @default(CASH)
+  saleStatus      SaleStatus    @default(COMPLETED)
+  saleDate        DateTime      @default(now())
+  dueDate         DateTime?
+  notes           String?       @db.Text
+  createdBy       String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  customer Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  employee Employee?  @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  items    SaleItem[]
+  payments Payment[]
+
+  @@index([invoiceNo])
+  @@index([customerId])
+  @@index([employeeId])
+  @@index([paymentStatus])
+  @@index([saleDate])
+  @@map("sales")
+}
+
+model SaleItem {
+  id        Int   @id @default(autoincrement())
+  saleId    Int
+  itemId    Int
+  quantity  Float
+  unitPrice Float @default(0)
+  discount  Float @default(0)
+  lineTotal Float @default(0)
+
+  sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  item Item @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([saleId])
+  @@index([itemId])
+  @@map("sale_items")
+}
+
+model Payment {
+  id            Int           @id @default(autoincrement())
+  saleId        Int
+  amount        Float
+  method        PaymentMethod @default(CASH)
+  paymentDate   DateTime      @default(now())
+  referenceNo   String?
+  notes         String?       @db.Text
+  employeeId    Int?
+  createdBy     String?
+  createdAt     DateTime      @default(now())
+
+  sale     Sale      @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
+  @@index([saleId])
+  @@index([employeeId])
+  @@index([paymentDate])
+  @@map("payments")
 }

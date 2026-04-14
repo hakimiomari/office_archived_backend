@@ -17,7 +17,6 @@ export enum StockMovementType {
 
 export enum StockMovementReference {
   PURCHASE = 'PURCHASE',
-  TENDER = 'TENDER',
   MANUAL = 'MANUAL',
   TRANSFER = 'TRANSFER',
   ADJUSTMENT = 'ADJUSTMENT',
@@ -78,14 +77,6 @@ export class StockOutDto {
   @IsOptional()
   @IsInt()
   referenceId?: number;
-
-  @ApiProperty({
-    required: false,
-    description: 'Link to a tender when this stock is consumed for a tender',
-  })
-  @IsOptional()
-  @IsString()
-  tenderId?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

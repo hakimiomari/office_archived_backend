@@ -1,0 +1,236 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Request, Response } from 'express';
+import { SalesService } from './sales.service';
+import { InvoicePdfService } from './invoice-pdf.service';
+import { AuthGuard } from '../auth/guard/auth.guard';
+import { PermissionGuard } from '../guard/permissions.guard';
+import { Permissions } from '../guard/permissions.decorator';
+import {
+  CreateCustomerDto,
+  UpdateCustomerDto,
+  CustomerFilterDto,
+} from './dto/customer.dto';
+import {
+  CreateSaleDto,
+  UpdateSaleDto,
+  SaleFilterDto,
+} from './dto/sale.dto';
+import { CreatePaymentDto, PaymentFilterDto } from './dto/payment.dto';
+
+@ApiTags('Sales')
+@Controller('sales')
+@UseGuards(AuthGuard, PermissionGuard)
+export class SalesController {
+  constructor(
+    private readonly sales: SalesService,
+    private readonly pdf: InvoicePdfService,
+  ) {}
+
+  // -------------------- SUMMARY (before :id routes) --------------------
+
+  @Get('summary')
+  @Permissions('sale.read')
+  @ApiOperation({ summary: 'Get sales summary (today, month, pending)' })
+  getSummary() {
+    return this.sales.getSummary();
+  }
+
+  @Get('reports')
+  @Permissions('sale.read')
+  @ApiOperation({ summary: 'Aggregate report for daily / weekly / monthly / yearly' })
+  getReport(
+    @Query('period') period?: 'daily' | 'weekly' | 'monthly' | 'yearly',
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.sales.getReport(period ?? 'monthly', from, to);
+  }
+
+  @Get('overdue')
+  @Permissions('sale.read')
+  @ApiOperation({ summary: 'List overdue sales (dueDate passed, still unpaid or partial)' })
+  getOverdue() {
+    return this.sales.getOverdueSales();
+  }
+
+  // -------------------- CUSTOMERS --------------------
+
+  @Post('customers')
+  @Permissions('customer.create')
+  @ApiOperation({ summary: 'Create a customer' })
+  createCustomer(@Body() dto: CreateCustomerDto, @Req() req: Request) {
+    const user = req['user'];
+    return this.sales.createCustomer(
+      dto,
+      user?.sub ? String(user.sub) : undefined,
+    );
+  }
+
+  @Get('customers')
+  @Permissions('customer.read')
+  @ApiOperation({ summary: 'List customers' })
+  listCustomers(@Query() filters: CustomerFilterDto) {
+    return this.sales.findAllCustomers(filters);
+  }
+
+  @Get('customers/:id')
+  @Permissions('customer.read')
+  @ApiOperation({ summary: 'Get customer by id' })
+  getCustomer(@Param('id', ParseIntPipe) id: number) {
+    return this.sales.findOneCustomer(id);
+  }
+
+  @Patch('customers/:id')
+  @Permissions('customer.update')
+  @ApiOperation({ summary: 'Update customer' })
+  updateCustomer(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateCustomerDto,
+  ) {
+    return this.sales.updateCustomer(id, dto);
+  }
+
+  @Delete('customers/:id')
+  @Permissions('customer.delete')
+  @ApiOperation({ summary: 'Delete customer' })
+  removeCustomer(@Param('id', ParseIntPipe) id: number) {
+    return this.sales.removeCustomer(id);
+  }
+
+  // -------------------- PAYMENTS --------------------
+
+  @Post('payments')
+  @Permissions('payment.create')
+  @ApiOperation({ summary: 'Record a payment against a sale' })
+  createPayment(@Body() dto: CreatePaymentDto, @Req() req: Request) {
+    const user = req['user'];
+    return this.sales.createPayment(
+      dto,
+      user?.sub ? String(user.sub) : undefined,
+    );
+  }
+
+  @Get('payments')
+  @Permissions('payment.read')
+  @ApiOperation({ summary: 'List payments' })
+  listPayments(@Query() filters: PaymentFilterDto) {
+    return this.sales.findAllPayments(filters);
+  }
+
+  @Delete('payments/:id')
+  @Permissions('payment.delete')
+  @ApiOperation({ summary: 'Delete a payment (reverses its effect)' })
+  removePayment(@Param('id', ParseIntPipe) id: number) {
+    return this.sales.removePayment(id);
+  }
+
+  // -------------------- SALES --------------------
+
+  @Post()
+  @Permissions('sale.create')
+  @ApiOperation({ summary: 'Create a sale (invoice)' })
+  createSale(@Body() dto: CreateSaleDto, @Req() req: Request) {
+    const user = req['user'];
+    return this.sales.createSale(
+      dto,
+      user?.sub ? String(user.sub) : undefined,
+    );
+  }
+
+  @Get()
+  @Permissions('sale.read')
+  @ApiOperation({ summary: 'List sales with filters' })
+  listSales(@Query() filters: SaleFilterDto) {
+    return this.sales.findAllSales(filters);
+  }
+
+  @Get(':id')
+  @Permissions('sale.read')
+  @ApiOperation({ summary: 'Get a sale by id' })
+  getSale(@Param('id', ParseIntPipe) id: number) {
+    return this.sales.findOneSale(id);
+  }
+
+  @Get(':id/pdf')
+  @Permissions('sale.read')
+  @ApiOperation({ summary: 'Download a sale as a PDF invoice' })
+  async downloadPdf(
+    @Param('id', ParseIntPipe) id: number,
+    @Res() res: Response,
+  ) {
+    const sale = await this.sales.findOneSale(id);
+    const buffer = await this.pdf.generate({
+      invoiceNo: sale.invoiceNo,
+      saleDate: sale.saleDate,
+      dueDate: sale.dueDate,
+      customer: sale.customer,
+      items: sale.items.map((i) => ({
+        item: {
+          name: i.item.name,
+          sku: i.item.sku,
+          unit: i.item.unit,
+        },
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        discount: i.discount,
+        lineTotal: i.lineTotal,
+      })),
+      subtotal: sale.subtotal,
+      discount: sale.discount,
+      tax: sale.tax,
+      totalAmount: sale.totalAmount,
+      paidAmount: sale.paidAmount,
+      remainingAmount: sale.remainingAmount,
+      paymentStatus: sale.paymentStatus,
+      notes: sale.notes,
+    });
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${sale.invoiceNo}.pdf"`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
+  }
+
+  @Patch(':id')
+  @Permissions('sale.update')
+  @ApiOperation({ summary: 'Update sale notes / due date / status' })
+  updateSale(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateSaleDto,
+  ) {
+    return this.sales.updateSale(id, dto);
+  }
+
+  @Patch(':id/cancel')
+  @Permissions('sale.update')
+  @ApiOperation({ summary: 'Cancel a sale and restore stock' })
+  cancelSale(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
+    const user = req['user'];
+    return this.sales.cancelSale(
+      id,
+      user?.sub ? String(user.sub) : undefined,
+    );
+  }
+
+  @Delete(':id')
+  @Permissions('sale.delete')
+  @ApiOperation({ summary: 'Delete a sale' })
+  removeSale(@Param('id', ParseIntPipe) id: number) {
+    return this.sales.removeSale(id);
+  }
+}

@@ -130,16 +130,6 @@ export class EmployeesService {
     return this.prisma.employee.delete({ where: { id } });
   }
 
-  /** Assigned equipment for an employee */
-  async getEmployeeEquipment(id: number) {
-    await this.findOneEmployee(id);
-    return this.prisma.equipmentAssignment.findMany({
-      where: { employeeId: id, status: 'ASSIGNED' },
-      include: { equipment: true },
-      orderBy: { assignedDate: 'desc' },
-    });
-  }
-
   // =========================================================================
   //                               DEPARTMENTS
   // =========================================================================

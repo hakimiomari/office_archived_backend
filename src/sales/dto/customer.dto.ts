@@ -1,5 +1,8 @@
 import {
+  IsEmail,
   IsInt,
+  IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   Min,
@@ -7,35 +10,32 @@ import {
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
-export class CreateContractsSummaryDto {
-  @ApiProperty({ example: 2025 })
-  @IsInt()
-  @Min(2000)
-  year: number;
+export class CreateCustomerDto {
+  @ApiProperty({ example: 'Ahmad Khan' })
+  @IsString()
+  @IsNotEmpty()
+  name: string;
 
-  @ApiProperty({ default: 0 })
+  @ApiProperty({ required: false })
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  totalContracts?: number;
+  @IsString()
+  phone?: string;
 
-  @ApiProperty({ default: 0 })
+  @ApiProperty({ required: false })
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  activeContracts?: number;
+  @IsEmail()
+  email?: string;
 
-  @ApiProperty({ default: 0 })
+  @ApiProperty({ required: false })
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  suspendedContracts?: number;
+  @IsString()
+  address?: string;
 
-  @ApiProperty({ default: 0 })
+  @ApiProperty({ required: false, default: 0 })
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   @Min(0)
-  cancelledContracts?: number;
+  creditLimit?: number;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -43,11 +43,9 @@ export class CreateContractsSummaryDto {
   notes?: string;
 }
 
-export class UpdateContractsSummaryDto extends PartialType(
-  CreateContractsSummaryDto,
-) {}
+export class UpdateCustomerDto extends PartialType(CreateCustomerDto) {}
 
-export class ContractsSummaryFilterDto {
+export class CustomerFilterDto {
   @ApiProperty({ required: false, default: 1 })
   @IsOptional()
   @Type(() => Number)
@@ -64,7 +62,6 @@ export class ContractsSummaryFilterDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  year?: number;
+  @IsString()
+  search?: string;
 }

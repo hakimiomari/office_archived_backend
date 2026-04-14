@@ -74,6 +74,88 @@ export class CreatePurchaseDto {
   @IsOptional()
   @IsInt()
   targetWarehouseId?: number;
+
+  @ApiProperty({
+    required: false,
+    default: 0,
+    description: 'Amount paid up-front against this purchase',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  paidAmount?: number;
 }
 
 export class UpdatePurchaseDto extends PartialType(CreatePurchaseDto) {}
+
+export enum SupplierPaymentMethod {
+  CASH = 'CASH',
+  BANK = 'BANK',
+  MOBILE = 'MOBILE',
+  CREDIT = 'CREDIT',
+  OTHER = 'OTHER',
+}
+
+export class CreateSupplierPaymentDto {
+  @ApiProperty()
+  @IsInt()
+  supplierId: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  purchaseId?: number;
+
+  @ApiProperty()
+  @IsNumber()
+  @Min(0.01)
+  amount: number;
+
+  @ApiProperty({ enum: SupplierPaymentMethod, default: SupplierPaymentMethod.CASH })
+  @IsOptional()
+  @IsEnum(SupplierPaymentMethod)
+  method?: SupplierPaymentMethod;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  paymentDate?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  referenceNo?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+export class SupplierPaymentFilterDto {
+  @ApiProperty({ required: false, default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiProperty({ required: false, default: 10 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  supplierId?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  purchaseId?: number;
+}

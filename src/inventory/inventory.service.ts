@@ -20,6 +20,8 @@ import {
   CreatePurchaseDto,
   UpdatePurchaseDto,
   PurchaseStatus,
+  CreateSupplierPaymentDto,
+  SupplierPaymentFilterDto,
 } from './dto/purchase.dto';
 import {
   ItemFilterDto,
@@ -338,7 +340,6 @@ export class InventoryService {
           sourceWarehouseId: dto.sourceWarehouseId,
           referenceType: dto.referenceType ?? 'MANUAL',
           referenceId: dto.referenceId,
-          tenderId: dto.tenderId,
           notes: dto.notes,
           userId: userId ?? null,
         },
@@ -513,6 +514,10 @@ export class InventoryService {
       (sum, i) => sum + (i.price ?? 0) * i.quantity,
       0,
     );
+    const paidAmount = Math.max(0, Math.min(dto.paidAmount ?? 0, totalAmount));
+    const remainingAmount = totalAmount - paidAmount;
+    const paymentStatus =
+      remainingAmount === 0 ? 'PAID' : paidAmount > 0 ? 'PARTIAL' : 'UNPAID';
 
     return this.prisma.$transaction(async (tx) => {
       const purchase = await tx.purchase.create({
@@ -523,6 +528,9 @@ export class InventoryService {
           status: dto.status ?? 'PENDING',
           notes: dto.notes,
           totalAmount,
+          paidAmount,
+          remainingAmount,
+          paymentStatus,
           createdBy: userId,
           items: {
             create: dto.items.map((i) => ({
@@ -534,6 +542,28 @@ export class InventoryService {
         },
         include: { items: { include: { item: true } }, supplier: true },
       });
+
+      // Record initial payment + update supplier balance
+      if (paidAmount > 0) {
+        await tx.supplierPayment.create({
+          data: {
+            supplierId: dto.supplierId!,
+            purchaseId: purchase.id,
+            amount: paidAmount,
+            method: 'CASH',
+            paymentDate: dto.purchaseDate
+              ? new Date(dto.purchaseDate)
+              : new Date(),
+            createdBy: userId,
+          },
+        });
+      }
+      if (dto.supplierId && remainingAmount > 0) {
+        await tx.supplier.update({
+          where: { id: dto.supplierId },
+          data: { totalOwed: { increment: remainingAmount } },
+        });
+      }
 
       // If marked as RECEIVED and a target warehouse is provided, create IN movements
       if (dto.status === 'RECEIVED' && dto.targetWarehouseId) {
@@ -694,6 +724,138 @@ export class InventoryService {
         data: { status: 'RECEIVED' },
         include: { items: { include: { item: true } }, supplier: true },
       });
+    });
+  }
+
+  // =========================================================================
+  //                          SUPPLIER PAYMENTS
+  // =========================================================================
+
+  async createSupplierPayment(
+    dto: CreateSupplierPaymentDto,
+    userId?: string,
+  ) {
+    const supplier = await this.prisma.supplier.findUnique({
+      where: { id: dto.supplierId },
+    });
+    if (!supplier)
+      throw new NotFoundException(`Supplier ${dto.supplierId} not found`);
+
+    // If linked to a specific purchase, validate it + cap
+    let purchase: any = null;
+    if (dto.purchaseId) {
+      purchase = await this.prisma.purchase.findUnique({
+        where: { id: dto.purchaseId },
+      });
+      if (!purchase)
+        throw new NotFoundException(`Purchase ${dto.purchaseId} not found`);
+      if (dto.amount > purchase.remainingAmount) {
+        throw new BadRequestException(
+          `Payment amount (${dto.amount}) exceeds remaining balance (${purchase.remainingAmount})`,
+        );
+      }
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const payment = await tx.supplierPayment.create({
+        data: {
+          supplierId: dto.supplierId,
+          purchaseId: dto.purchaseId,
+          amount: dto.amount,
+          method: dto.method ?? 'CASH',
+          paymentDate: dto.paymentDate ? new Date(dto.paymentDate) : new Date(),
+          referenceNo: dto.referenceNo,
+          notes: dto.notes,
+          createdBy: userId,
+        },
+      });
+
+      // Update purchase balance if linked
+      if (purchase) {
+        const newPaid = purchase.paidAmount + dto.amount;
+        const newRemaining = purchase.totalAmount - newPaid;
+        const newStatus =
+          newRemaining === 0 ? 'PAID' : newPaid > 0 ? 'PARTIAL' : 'UNPAID';
+        await tx.purchase.update({
+          where: { id: purchase.id },
+          data: {
+            paidAmount: newPaid,
+            remainingAmount: newRemaining,
+            paymentStatus: newStatus,
+          },
+        });
+      }
+
+      // Decrement supplier total owed
+      await tx.supplier.update({
+        where: { id: dto.supplierId },
+        data: { totalOwed: { decrement: dto.amount } },
+      });
+
+      return payment;
+    });
+  }
+
+  async findAllSupplierPayments(filters: SupplierPaymentFilterDto) {
+    const page = filters.page ?? 1;
+    const limit = filters.limit ?? 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.SupplierPaymentWhereInput = {};
+    if (filters.supplierId) where.supplierId = filters.supplierId;
+    if (filters.purchaseId) where.purchaseId = filters.purchaseId;
+
+    const [data, total] = await Promise.all([
+      this.prisma.supplierPayment.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { paymentDate: 'desc' },
+        include: {
+          supplier: true,
+          purchase: { select: { id: true, referenceNo: true, totalAmount: true } },
+        },
+      }),
+      this.prisma.supplierPayment.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  async removeSupplierPayment(id: number) {
+    const payment = await this.prisma.supplierPayment.findUnique({
+      where: { id },
+      include: { purchase: true },
+    });
+    if (!payment) throw new NotFoundException(`Supplier payment ${id} not found`);
+
+    return this.prisma.$transaction(async (tx) => {
+      // Reverse purchase balance
+      if (payment.purchase) {
+        const p = payment.purchase;
+        const newPaid = Math.max(0, p.paidAmount - payment.amount);
+        const newRemaining = p.totalAmount - newPaid;
+        const newStatus =
+          newRemaining === 0 ? 'PAID' : newPaid > 0 ? 'PARTIAL' : 'UNPAID';
+        await tx.purchase.update({
+          where: { id: p.id },
+          data: {
+            paidAmount: newPaid,
+            remainingAmount: newRemaining,
+            paymentStatus: newStatus,
+          },
+        });
+      }
+      // Restore supplier owed
+      await tx.supplier.update({
+        where: { id: payment.supplierId },
+        data: { totalOwed: { increment: payment.amount } },
+      });
+
+      return tx.supplierPayment.delete({ where: { id } });
     });
   }
 

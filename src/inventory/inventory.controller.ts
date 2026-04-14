@@ -30,6 +30,8 @@ import {
 import {
   CreatePurchaseDto,
   UpdatePurchaseDto,
+  CreateSupplierPaymentDto,
+  SupplierPaymentFilterDto,
 } from './dto/purchase.dto';
 import {
   ItemFilterDto,
@@ -270,6 +272,36 @@ export class InventoryController {
     @Body() body: { targetWarehouseId: number },
   ) {
     return this.inventory.receivePurchase(id, body.targetWarehouseId);
+  }
+
+  // -------------------- SUPPLIER PAYMENTS --------------------
+
+  @Post('supplier-payments')
+  @Permissions('inventory.create')
+  @ApiOperation({ summary: 'Record a payment to a supplier' })
+  createSupplierPayment(
+    @Body() dto: CreateSupplierPaymentDto,
+    @Req() req: Request,
+  ) {
+    const user = req['user'];
+    return this.inventory.createSupplierPayment(
+      dto,
+      user?.sub ? String(user.sub) : undefined,
+    );
+  }
+
+  @Get('supplier-payments')
+  @Permissions('inventory.read')
+  @ApiOperation({ summary: 'List supplier payments' })
+  listSupplierPayments(@Query() filters: SupplierPaymentFilterDto) {
+    return this.inventory.findAllSupplierPayments(filters);
+  }
+
+  @Delete('supplier-payments/:id')
+  @Permissions('inventory.delete')
+  @ApiOperation({ summary: 'Delete a supplier payment (reverses its effect)' })
+  removeSupplierPayment(@Param('id', ParseIntPipe) id: number) {
+    return this.inventory.removeSupplierPayment(id);
   }
 
   // -------------------- ITEMS (must come last to avoid :id shadowing) --------------------

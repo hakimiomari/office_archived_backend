@@ -48,4 +48,16 @@ export class CreateItemDto {
   @IsNumber()
   @Min(0)
   minStock?: number;
+
+  @ApiProperty({ example: 150, default: 0 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  salePrice?: number;
+
+  @ApiProperty({ example: 100, default: 0 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  purchasePrice?: number;
 }
