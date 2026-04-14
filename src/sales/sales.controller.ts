@@ -29,7 +29,11 @@ import {
   UpdateSaleDto,
   SaleFilterDto,
 } from './dto/sale.dto';
-import { CreatePaymentDto, PaymentFilterDto } from './dto/payment.dto';
+import {
+  CreatePaymentDto,
+  PaymentFilterDto,
+  OverdueFilterDto,
+} from './dto/payment.dto';
 
 @ApiTags('Sales')
 @Controller('sales')
@@ -63,8 +67,8 @@ export class SalesController {
   @Get('overdue')
   @Permissions('sale.read')
   @ApiOperation({ summary: 'List overdue sales (dueDate passed, still unpaid or partial)' })
-  getOverdue() {
-    return this.sales.getOverdueSales();
+  getOverdue(@Query() filters: OverdueFilterDto) {
+    return this.sales.getOverdueSales(filters);
   }
 
   // -------------------- CUSTOMERS --------------------
@@ -92,6 +96,56 @@ export class SalesController {
   @ApiOperation({ summary: 'Get customer by id' })
   getCustomer(@Param('id', ParseIntPipe) id: number) {
     return this.sales.findOneCustomer(id);
+  }
+
+  @Get('customers/:id/report-pdf')
+  @Permissions('customer.read')
+  @ApiOperation({
+    summary: 'Download a single PDF statement with all sales + payments for a customer',
+  })
+  async downloadCustomerReportPdf(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+    @Res() res: Response,
+  ) {
+    const data = await this.sales.getCustomerReportData(id, from, to);
+    const buffer = await this.pdf.generateCustomerReport({
+      customer: {
+        id: data.customer.id,
+        name: data.customer.name,
+        phone: data.customer.phone,
+        email: data.customer.email,
+        address: data.customer.address,
+        creditLimit: data.customer.creditLimit,
+        totalOwed: data.customer.totalOwed,
+      },
+      range: data.range,
+      stats: data.stats,
+      sales: data.sales.map((s) => ({
+        invoiceNo: s.invoiceNo,
+        saleDate: s.saleDate,
+        totalAmount: s.totalAmount,
+        paidAmount: s.paidAmount,
+        remainingAmount: s.remainingAmount,
+        paymentStatus: s.paymentStatus,
+      })),
+      payments: data.payments.map((p) => ({
+        paymentDate: p.paymentDate,
+        amount: p.amount,
+        method: p.method,
+        invoiceNo: p.invoiceNo,
+        referenceNo: p.referenceNo,
+      })),
+    });
+
+    const safeName = data.customer.name.replace(/[^a-z0-9]+/gi, '_');
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="customer_${data.customer.id}_${safeName}.pdf"`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
   }
 
   @Patch('customers/:id')

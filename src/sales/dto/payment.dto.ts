@@ -12,6 +12,8 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { PaymentMethod } from './sale.dto';
 
+export { PaymentMethod } from './sale.dto';
+
 export class CreatePaymentDto {
   @ApiProperty()
   @Type(() => Number)
@@ -75,4 +77,32 @@ export class PaymentFilterDto {
   @IsOptional()
   @IsEnum(PaymentMethod)
   method?: PaymentMethod;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  from?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  to?: string;
+}
+
+export class OverdueFilterDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  customerId?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  from?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  to?: string;
 }

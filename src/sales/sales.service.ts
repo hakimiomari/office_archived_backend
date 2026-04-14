@@ -16,7 +16,11 @@ import {
   SaleFilterDto,
   PaymentStatus,
 } from './dto/sale.dto';
-import { CreatePaymentDto, PaymentFilterDto } from './dto/payment.dto';
+import {
+  CreatePaymentDto,
+  PaymentFilterDto,
+  OverdueFilterDto,
+} from './dto/payment.dto';
 
 @Injectable()
 export class SalesService {
@@ -503,6 +507,12 @@ export class SalesService {
     const where: Prisma.PaymentWhereInput = {};
     if (filters.saleId) where.saleId = filters.saleId;
     if (filters.method) where.method = filters.method;
+    if (filters.from || filters.to) {
+      where.paymentDate = {
+        ...(filters.from && { gte: new Date(filters.from) }),
+        ...(filters.to && { lte: new Date(filters.to) }),
+      };
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.payment.findMany({
@@ -810,17 +820,108 @@ export class SalesService {
     };
   }
 
-  async getOverdueSales() {
-    const now = new Date();
-    return this.prisma.sale.findMany({
-      where: {
-        saleStatus: 'COMPLETED',
-        paymentStatus: { in: ['UNPAID', 'PARTIAL'] },
-        dueDate: { lt: now },
+  /** Build the full customer statement data (optionally filtered by date range) */
+  async getCustomerReportData(id: number, from?: string, to?: string) {
+    const customer = await this.prisma.customer.findUnique({ where: { id } });
+    if (!customer) throw new NotFoundException(`Customer ${id} not found`);
+
+    const fromDate = from ? new Date(from) : undefined;
+    // Add 1 day to toDate so it's inclusive
+    const toDate = to ? new Date(new Date(to).getTime() + 86400000) : undefined;
+
+    const saleDateFilter =
+      fromDate || toDate
+        ? {
+            ...(fromDate && { gte: fromDate }),
+            ...(toDate && { lt: toDate }),
+          }
+        : undefined;
+
+    const paymentDateFilter =
+      fromDate || toDate
+        ? {
+            ...(fromDate && { gte: fromDate }),
+            ...(toDate && { lt: toDate }),
+          }
+        : undefined;
+
+    const [sales, payments, totals] = await Promise.all([
+      this.prisma.sale.findMany({
+        where: {
+          customerId: id,
+          saleStatus: 'COMPLETED',
+          ...(saleDateFilter && { saleDate: saleDateFilter }),
+        },
+        orderBy: { saleDate: 'desc' },
+      }),
+      this.prisma.payment.findMany({
+        where: {
+          sale: { customerId: id },
+          ...(paymentDateFilter && { paymentDate: paymentDateFilter }),
+        },
+        include: { sale: { select: { invoiceNo: true } } },
+        orderBy: { paymentDate: 'desc' },
+      }),
+      this.prisma.sale.aggregate({
+        where: {
+          customerId: id,
+          saleStatus: 'COMPLETED',
+          ...(saleDateFilter && { saleDate: saleDateFilter }),
+        },
+        _sum: {
+          totalAmount: true,
+          paidAmount: true,
+          remainingAmount: true,
+        },
+        _count: { id: true },
+      }),
+    ]);
+
+    return {
+      customer,
+      range: {
+        from: fromDate ?? null,
+        to: to ? new Date(to) : null,
       },
+      stats: {
+        salesCount: totals._count.id,
+        totalSpent: totals._sum.totalAmount ?? 0,
+        totalPaid: totals._sum.paidAmount ?? 0,
+        totalRemaining: totals._sum.remainingAmount ?? 0,
+      },
+      sales,
+      payments: payments.map((p) => ({
+        ...p,
+        invoiceNo: p.sale?.invoiceNo ?? null,
+      })),
+    };
+  }
+
+  async getOverdueSales(filters: OverdueFilterDto = {}) {
+    const now = new Date();
+    const where: Prisma.SaleWhereInput = {
+      saleStatus: 'COMPLETED',
+      paymentStatus: { in: ['UNPAID', 'PARTIAL'] },
+    };
+
+    // Default: dueDate in the past. If user provides from/to, use those to
+    // filter dueDate instead of the default "< now".
+    if (filters.from || filters.to) {
+      where.dueDate = {
+        ...(filters.from && { gte: new Date(filters.from) }),
+        ...(filters.to && { lte: new Date(filters.to) }),
+      };
+    } else {
+      where.dueDate = { lt: now };
+    }
+
+    if (filters.customerId) where.customerId = filters.customerId;
+
+    return this.prisma.sale.findMany({
+      where,
       include: { customer: true },
       orderBy: { dueDate: 'asc' },
-      take: 50,
+      take: 200,
     });
   }
 }
