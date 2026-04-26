@@ -61,6 +61,32 @@ type CustomerReportInput = {
   }[];
 };
 
+type SalesReportInput = {
+  period: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  range: { start: Date; end: Date };
+  warehouse: { id: number; name: string } | null;
+  financial: {
+    revenue: number;
+    expenses: number;
+    profit: number;
+    subtotal: number;
+    discount: number;
+    tax: number;
+    cashReceived: number;
+    pendingPayments: number;
+  };
+  counts: { salesCount: number; purchasesCount: number };
+  byStatus: { status: string; count: number; total: number }[];
+  topProducts: {
+    itemId: number;
+    name: string;
+    sku: string | null;
+    quantity: number;
+    revenue: number;
+  }[];
+  revenueTrend: { day: Date; revenue: number; count: number }[];
+};
+
 @Injectable()
 export class InvoicePdfService {
   async generate(sale: InvoiceInput): Promise<Buffer> {
@@ -465,6 +491,290 @@ export class InvoicePdfService {
       .fontSize(8)
       .fillColor('#999')
       .text(`Customer Statement — ${data.customer.name}`, 50, 800, {
+        align: 'center',
+        width: 500,
+      });
+
+    doc.end();
+    return done;
+  }
+
+  /**
+   * Generate a printable sales report covering a period with KPIs,
+   * payment-status breakdown, top products and a daily revenue trend.
+   */
+  async generateSalesReport(data: SalesReportInput): Promise<Buffer> {
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const chunks: Buffer[] = [];
+    doc.on('data', (c: Buffer) => chunks.push(c));
+    const done = new Promise<Buffer>((resolve) =>
+      doc.on('end', () => resolve(Buffer.concat(chunks))),
+    );
+
+    const fmt = (v: number) =>
+      v.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+
+    const periodLabel = data.period.charAt(0).toUpperCase() + data.period.slice(1);
+
+    // Header
+    doc
+      .fontSize(20)
+      .fillColor('#111')
+      .text('SALES REPORT', { align: 'right' })
+      .moveDown(0.2);
+    doc.fontSize(10).fillColor('#555');
+    doc.text(`Period: ${periodLabel}`, { align: 'right' });
+    doc.text(
+      `Range: ${data.range.start.toLocaleDateString()} → ${data.range.end.toLocaleDateString()}`,
+      { align: 'right' },
+    );
+    doc.text(
+      `Warehouse: ${data.warehouse ? data.warehouse.name : 'All warehouses'}`,
+      { align: 'right' },
+    );
+    doc.text(`Generated: ${new Date().toLocaleString()}`, { align: 'right' });
+    doc.moveDown(1);
+
+    // ----- KPI grid (2 rows x 4 cols) -----
+    doc.fontSize(12).font('Helvetica-Bold').fillColor('#111').text('Summary');
+    doc.moveDown(0.3);
+
+    const kpiTop = doc.y;
+    const boxW = 120;
+    const boxH = 44;
+    const gapX = 10;
+    const startX = 50;
+    const drawBox = (
+      label: string,
+      value: string,
+      col: number,
+      row: number,
+      color = '#111',
+    ) => {
+      const x = startX + col * (boxW + gapX);
+      const y = kpiTop + row * (boxH + 8);
+      doc
+        .rect(x, y, boxW, boxH)
+        .lineWidth(0.5)
+        .strokeColor('#ccc')
+        .stroke();
+      doc.fontSize(8).fillColor('#666').font('Helvetica').text(label, x + 8, y + 6, {
+        width: boxW - 16,
+      });
+      doc
+        .fontSize(13)
+        .fillColor(color)
+        .font('Helvetica-Bold')
+        .text(value, x + 8, y + 22, { width: boxW - 16 });
+    };
+
+    drawBox('Revenue', fmt(data.financial.revenue), 0, 0, '#0a7a2f');
+    drawBox('Expenses', fmt(data.financial.expenses), 1, 0, '#c00');
+    drawBox(
+      'Profit',
+      fmt(data.financial.profit),
+      2,
+      0,
+      data.financial.profit < 0 ? '#c00' : '#0a7a2f',
+    );
+    drawBox(
+      'Pending',
+      fmt(data.financial.pendingPayments),
+      3,
+      0,
+      data.financial.pendingPayments > 0 ? '#c00' : '#111',
+    );
+
+    drawBox('Sales count', String(data.counts.salesCount), 0, 1);
+    drawBox('Cash received', fmt(data.financial.cashReceived), 1, 1);
+    drawBox('Subtotal', fmt(data.financial.subtotal), 2, 1);
+    drawBox('Discount', fmt(data.financial.discount), 3, 1);
+
+    doc.y = kpiTop + 2 * (boxH + 8) + 10;
+
+    // ----- Payment status breakdown -----
+    doc
+      .fontSize(12)
+      .fillColor('#111')
+      .font('Helvetica-Bold')
+      .text('Payment status breakdown');
+    doc.moveDown(0.3);
+
+    const statusTop = doc.y;
+    const statusCols = { label: 50, count: 220, total: 320 };
+    doc.fontSize(9).fillColor('#111').font('Helvetica-Bold');
+    doc.text('Status', statusCols.label, statusTop);
+    doc.text('Count', statusCols.count, statusTop, { width: 80, align: 'right' });
+    doc.text('Total', statusCols.total, statusTop, { width: 80, align: 'right' });
+    doc
+      .moveTo(50, statusTop + 14)
+      .lineTo(550, statusTop + 14)
+      .strokeColor('#999')
+      .stroke();
+
+    doc.font('Helvetica').fillColor('#333');
+    let y = statusTop + 20;
+    if (data.byStatus.length === 0) {
+      doc.fontSize(10).fillColor('#999').text('No data.', 50, y);
+      y += 20;
+    } else {
+      for (const s of data.byStatus) {
+        doc.fontSize(9).fillColor('#333');
+        const color =
+          s.status === 'PAID'
+            ? '#0a7a2f'
+            : s.status === 'PARTIAL'
+            ? '#b58105'
+            : s.status === 'UNPAID'
+            ? '#c00'
+            : '#333';
+        doc.fillColor(color).text(s.status, statusCols.label, y);
+        doc.fillColor('#333').text(String(s.count), statusCols.count, y, {
+          width: 80,
+          align: 'right',
+        });
+        doc.text(fmt(s.total), statusCols.total, y, {
+          width: 80,
+          align: 'right',
+        });
+        y += 16;
+      }
+    }
+    doc.y = y + 10;
+
+    // ----- Top products table -----
+    if (doc.y > 680) {
+      doc.addPage();
+      doc.y = 50;
+    }
+    doc
+      .fontSize(12)
+      .fillColor('#111')
+      .font('Helvetica-Bold')
+      .text('Top products');
+    doc.moveDown(0.3);
+
+    const tpTop = doc.y;
+    const tpCols = { idx: 50, name: 80, sku: 280, qty: 380, revenue: 460 };
+    doc.fontSize(9).fillColor('#111').font('Helvetica-Bold');
+    doc.text('#', tpCols.idx, tpTop);
+    doc.text('Item', tpCols.name, tpTop);
+    doc.text('SKU', tpCols.sku, tpTop);
+    doc.text('Qty', tpCols.qty, tpTop, { width: 60, align: 'right' });
+    doc.text('Revenue', tpCols.revenue, tpTop, { width: 80, align: 'right' });
+    doc
+      .moveTo(50, tpTop + 14)
+      .lineTo(550, tpTop + 14)
+      .strokeColor('#999')
+      .stroke();
+
+    doc.font('Helvetica').fillColor('#333');
+    y = tpTop + 20;
+    if (data.topProducts.length === 0) {
+      doc.fontSize(10).fillColor('#999').text('No sales in this period.', 50, y);
+      y += 20;
+    } else {
+      data.topProducts.forEach((p, i) => {
+        if (y > 760) {
+          doc.addPage();
+          y = 50;
+        }
+        doc.fontSize(9).fillColor('#333');
+        doc.text(String(i + 1), tpCols.idx, y, { width: 20 });
+        doc.text(p.name, tpCols.name, y, { width: 190 });
+        doc.text(p.sku ?? '—', tpCols.sku, y, { width: 90 });
+        doc.text(fmt(p.quantity), tpCols.qty, y, { width: 60, align: 'right' });
+        doc
+          .fillColor('#0a7a2f')
+          .text(fmt(p.revenue), tpCols.revenue, y, { width: 80, align: 'right' });
+        doc.fillColor('#333');
+        y += 14;
+      });
+    }
+    doc.y = y + 10;
+
+    // ----- Daily revenue trend -----
+    if (doc.y > 680) {
+      doc.addPage();
+      doc.y = 50;
+    }
+    doc
+      .fontSize(12)
+      .fillColor('#111')
+      .font('Helvetica-Bold')
+      .text('Daily revenue');
+    doc.moveDown(0.3);
+
+    const trendTop = doc.y;
+    const trendCols = { day: 50, count: 220, revenue: 320 };
+    doc.fontSize(9).fillColor('#111').font('Helvetica-Bold');
+    doc.text('Day', trendCols.day, trendTop);
+    doc.text('Sales', trendCols.count, trendTop, {
+      width: 80,
+      align: 'right',
+    });
+    doc.text('Revenue', trendCols.revenue, trendTop, {
+      width: 80,
+      align: 'right',
+    });
+    doc
+      .moveTo(50, trendTop + 14)
+      .lineTo(550, trendTop + 14)
+      .strokeColor('#999')
+      .stroke();
+
+    doc.font('Helvetica').fillColor('#333');
+    y = trendTop + 20;
+    if (data.revenueTrend.length === 0) {
+      doc.fontSize(10).fillColor('#999').text('No daily data.', 50, y);
+      y += 20;
+    } else {
+      for (const r of data.revenueTrend) {
+        if (y > 760) {
+          doc.addPage();
+          y = 50;
+        }
+        doc.fontSize(9).fillColor('#333');
+        doc.text(new Date(r.day).toLocaleDateString(), trendCols.day, y, {
+          width: 160,
+        });
+        doc.text(String(r.count), trendCols.count, y, {
+          width: 80,
+          align: 'right',
+        });
+        doc.text(fmt(r.revenue), trendCols.revenue, y, {
+          width: 80,
+          align: 'right',
+        });
+        y += 14;
+      }
+      // totals row
+      doc
+        .moveTo(50, y + 2)
+        .lineTo(550, y + 2)
+        .strokeColor('#999')
+        .stroke();
+      y += 8;
+      doc.font('Helvetica-Bold').fillColor('#111').fontSize(9);
+      doc.text('Total', trendCols.day, y);
+      doc.text(String(data.counts.salesCount), trendCols.count, y, {
+        width: 80,
+        align: 'right',
+      });
+      doc.text(fmt(data.financial.revenue), trendCols.revenue, y, {
+        width: 80,
+        align: 'right',
+      });
+    }
+
+    // Footer
+    doc
+      .fontSize(8)
+      .fillColor('#999')
+      .text(`Sales Report — ${periodLabel}`, 50, 800, {
         align: 'center',
         width: 500,
       });

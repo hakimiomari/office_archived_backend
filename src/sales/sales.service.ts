@@ -710,11 +710,29 @@ export class SalesService {
     period: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'monthly',
     fromStr?: string,
     toStr?: string,
+    warehouseId?: number,
   ) {
     const { start, end } =
       fromStr && toStr
         ? { start: new Date(fromStr), end: new Date(toStr) }
         : this.getPeriodRange(period);
+
+    // Validate warehouse if provided so the report metadata can echo its name.
+    let warehouse: { id: number; name: string } | null = null;
+    if (warehouseId) {
+      const w = await this.prisma.warehouse.findUnique({
+        where: { id: warehouseId },
+        select: { id: true, name: true },
+      });
+      if (w) warehouse = w;
+    }
+
+    // Reusable scoping fragment: warehouse filter applied to all sales queries.
+    const saleWhere = (extra: Prisma.SaleWhereInput = {}): Prisma.SaleWhereInput => ({
+      saleStatus: 'COMPLETED',
+      ...(warehouseId ? { warehouseId } : {}),
+      ...extra,
+    });
 
     const [
       salesAgg,
@@ -728,26 +746,37 @@ export class SalesService {
       revenueByDay,
     ] = await Promise.all([
       this.prisma.sale.aggregate({
-        where: {
-          saleStatus: 'COMPLETED',
-          saleDate: { gte: start, lt: end },
-        },
+        where: saleWhere({ saleDate: { gte: start, lt: end } }),
         _sum: { totalAmount: true, subtotal: true, discount: true, tax: true },
       }),
       this.prisma.sale.count({
-        where: {
-          saleStatus: 'COMPLETED',
-          saleDate: { gte: start, lt: end },
-        },
+        where: saleWhere({ saleDate: { gte: start, lt: end } }),
       }),
+      // Payments are derived from sales — scope via the sale relation when a
+      // warehouse filter is active.
       this.prisma.payment.aggregate({
-        where: { paymentDate: { gte: start, lt: end } },
+        where: {
+          paymentDate: { gte: start, lt: end },
+          ...(warehouseId ? { sale: { warehouseId } } : {}),
+        },
         _sum: { amount: true },
       }),
+      // Purchases don't have a warehouseId column; scope via stock movements
+      // that posted IN to this warehouse.
       this.prisma.purchase.aggregate({
         where: {
           status: 'RECEIVED',
           purchaseDate: { gte: start, lt: end },
+          ...(warehouseId
+            ? {
+                movements: {
+                  some: {
+                    type: 'IN',
+                    targetWarehouseId: warehouseId,
+                  },
+                },
+              }
+            : {}),
         },
         _sum: { totalAmount: true },
       }),
@@ -755,50 +784,67 @@ export class SalesService {
         where: {
           status: 'RECEIVED',
           purchaseDate: { gte: start, lt: end },
+          ...(warehouseId
+            ? {
+                movements: {
+                  some: {
+                    type: 'IN',
+                    targetWarehouseId: warehouseId,
+                  },
+                },
+              }
+            : {}),
         },
       }),
       this.prisma.sale.aggregate({
-        where: {
-          saleStatus: 'COMPLETED',
-          paymentStatus: { in: ['UNPAID', 'PARTIAL'] },
-        },
+        where: saleWhere({ paymentStatus: { in: ['UNPAID', 'PARTIAL'] } }),
         _sum: { remainingAmount: true },
       }),
       this.prisma.sale.groupBy({
         by: ['paymentStatus'],
-        where: {
-          saleStatus: 'COMPLETED',
-          saleDate: { gte: start, lt: end },
-        },
+        where: saleWhere({ saleDate: { gte: start, lt: end } }),
         _count: { id: true },
         _sum: { totalAmount: true },
       }),
       this.prisma.saleItem.groupBy({
         by: ['itemId'],
         where: {
-          sale: {
-            saleStatus: 'COMPLETED',
-            saleDate: { gte: start, lt: end },
-          },
+          sale: saleWhere({ saleDate: { gte: start, lt: end } }),
         },
         _sum: { quantity: true, lineTotal: true },
         orderBy: { _sum: { lineTotal: 'desc' } },
         take: 10,
       }),
-      // Revenue grouped by day (raw SQL for portability)
-      this.prisma.$queryRaw<
-        { day: Date; revenue: number | null; count: bigint }[]
-      >`
-        SELECT date_trunc('day', "saleDate") AS day,
-               SUM("totalAmount")::float AS revenue,
-               COUNT(*)::bigint AS count
-        FROM sales
-        WHERE "saleStatus" = 'COMPLETED'
-          AND "saleDate" >= ${start}
-          AND "saleDate" < ${end}
-        GROUP BY day
-        ORDER BY day ASC
-      `,
+      // Revenue grouped by day (raw SQL for portability). Conditional fragment
+      // is interpolated via a scalar to keep parameter binding safe.
+      warehouseId
+        ? this.prisma.$queryRaw<
+            { day: Date; revenue: number | null; count: bigint }[]
+          >`
+            SELECT date_trunc('day', "saleDate") AS day,
+                   SUM("totalAmount")::float AS revenue,
+                   COUNT(*)::bigint AS count
+            FROM sales
+            WHERE "saleStatus" = 'COMPLETED'
+              AND "warehouseId" = ${warehouseId}
+              AND "saleDate" >= ${start}
+              AND "saleDate" < ${end}
+            GROUP BY day
+            ORDER BY day ASC
+          `
+        : this.prisma.$queryRaw<
+            { day: Date; revenue: number | null; count: bigint }[]
+          >`
+            SELECT date_trunc('day', "saleDate") AS day,
+                   SUM("totalAmount")::float AS revenue,
+                   COUNT(*)::bigint AS count
+            FROM sales
+            WHERE "saleStatus" = 'COMPLETED'
+              AND "saleDate" >= ${start}
+              AND "saleDate" < ${end}
+            GROUP BY day
+            ORDER BY day ASC
+          `,
     ]);
 
     // Resolve top product names
@@ -818,6 +864,7 @@ export class SalesService {
     return {
       period,
       range: { start, end },
+      warehouse,
       financial: {
         revenue,
         expenses,

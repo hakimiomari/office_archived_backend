@@ -60,8 +60,57 @@ export class SalesController {
     @Query('period') period?: 'daily' | 'weekly' | 'monthly' | 'yearly',
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('warehouseId') warehouseId?: string,
   ) {
-    return this.sales.getReport(period ?? 'monthly', from, to);
+    return this.sales.getReport(
+      period ?? 'monthly',
+      from,
+      to,
+      warehouseId ? Number(warehouseId) : undefined,
+    );
+  }
+
+  @Get('reports/pdf')
+  @Permissions('sale.read')
+  @ApiOperation({ summary: 'Generate the sales report as a downloadable PDF' })
+  async downloadReportPdf(
+    @Query('period') period: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'monthly',
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+    @Query('warehouseId') warehouseId: string | undefined,
+    @Res() res: Response,
+  ) {
+    const data = await this.sales.getReport(
+      period,
+      from,
+      to,
+      warehouseId ? Number(warehouseId) : undefined,
+    );
+    const buffer = await this.pdf.generateSalesReport({
+      period: data.period,
+      range: { start: new Date(data.range.start), end: new Date(data.range.end) },
+      warehouse: data.warehouse,
+      financial: data.financial,
+      counts: data.counts,
+      byStatus: data.byStatus,
+      topProducts: data.topProducts,
+      revenueTrend: data.revenueTrend.map((r) => ({
+        day: new Date(r.day),
+        revenue: r.revenue,
+        count: r.count,
+      })),
+    });
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    const whSlug = data.warehouse
+      ? `_${data.warehouse.name.replace(/[^a-z0-9]+/gi, '_')}`
+      : '';
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="sales_report_${period}${whSlug}_${stamp}.pdf"`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
   }
 
   @Get('overdue')
