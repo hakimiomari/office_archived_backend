@@ -21,10 +21,14 @@ import {
   PaymentFilterDto,
   OverdueFilterDto,
 } from './dto/payment.dto';
+import { InventoryCoreService } from '../inventory/inventory-core.service';
 
 @Injectable()
 export class SalesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly core: InventoryCoreService,
+  ) {}
 
   // =========================================================================
   //                                CUSTOMERS
@@ -156,6 +160,16 @@ export class SalesService {
       throw new BadRequestException('Sale must contain at least one item');
     }
 
+    // Idempotency: a previously-processed key returns the original sale.
+    if (dto.idempotencyKey) {
+      const prior = await this.prisma.stockMovement.findUnique({
+        where: { idempotencyKey: dto.idempotencyKey },
+      });
+      if (prior?.referenceType === 'SALE' && prior.referenceId) {
+        return this.findOneSale(prior.referenceId);
+      }
+    }
+
     // Compute totals
     const subtotal = dto.items.reduce(
       (sum, li) => sum + li.quantity * li.unitPrice - (li.discount ?? 0),
@@ -186,26 +200,6 @@ export class SalesService {
     });
     if (!warehouse)
       throw new BadRequestException(`Warehouse ${dto.warehouseId} not found`);
-
-    // Validate stock levels up-front
-    for (const li of dto.items) {
-      const stock = await this.prisma.inventoryStock.findUnique({
-        where: {
-          itemId_warehouseId: {
-            itemId: li.itemId,
-            warehouseId: dto.warehouseId,
-          },
-        },
-        include: { item: true },
-      });
-      if (!stock || stock.quantity < li.quantity) {
-        const itemName = stock?.item.name ?? `Item ${li.itemId}`;
-        const available = stock?.quantity ?? 0;
-        throw new BadRequestException(
-          `Insufficient stock for "${itemName}" in this warehouse. Available: ${available}, requested: ${li.quantity}`,
-        );
-      }
-    }
 
     const invoiceNo = await this.generateInvoiceNo();
 
@@ -245,29 +239,47 @@ export class SalesService {
         },
       });
 
-      // Decrement stock and create movements
-      for (const li of dto.items) {
-        await tx.inventoryStock.update({
-          where: {
-            itemId_warehouseId: {
-              itemId: li.itemId,
-              warehouseId: dto.warehouseId,
-            },
-          },
-          data: { quantity: { decrement: li.quantity } },
-        });
+      // Atomic decrement + FIFO consumption per line item.
+      for (const [idx, li] of dto.items.entries()) {
+        await this.core.atomicDecrement(
+          tx,
+          li.itemId,
+          dto.warehouseId,
+          li.quantity,
+        );
+        const consumed = await this.core.consumeFIFO(
+          tx,
+          li.itemId,
+          dto.warehouseId,
+          li.quantity,
+        );
+        const totalCost = consumed.reduce(
+          (s, c) => s + c.quantity * c.unitCost,
+          0,
+        );
+        const unitCost =
+          consumed.length > 0 ? totalCost / li.quantity : null;
+
+        // Idempotency key only on the first movement (unique constraint).
+        const idempKey =
+          dto.idempotencyKey && idx === 0 ? dto.idempotencyKey : null;
 
         await tx.stockMovement.create({
           data: {
             itemId: li.itemId,
             type: 'OUT',
             quantity: li.quantity,
+            unitCost,
+            batchId: consumed[0]?.batchId ?? null,
             sourceWarehouseId: dto.warehouseId,
             referenceType: 'SALE',
             referenceId: sale.id,
+            idempotencyKey: idempKey,
             notes: `Sale ${invoiceNo}`,
           },
         });
+
+        await this.core.evaluateAlerts(tx, li.itemId, dto.warehouseId);
       }
 
       // Record initial payment if any
@@ -387,16 +399,32 @@ export class SalesService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      // Restore stock
+      // Restore stock + a fresh FIFO batch carrying the recorded unitCost
       for (const item of sale.items) {
-        await tx.inventoryStock.update({
+        await this.core.atomicIncrement(
+          tx,
+          item.itemId,
+          sale.warehouseId,
+          item.quantity,
+        );
+
+        // Use the cost recorded on the original SALE OUT movement (if any)
+        const origOut = await tx.stockMovement.findFirst({
           where: {
-            itemId_warehouseId: {
-              itemId: item.itemId,
-              warehouseId: sale.warehouseId,
-            },
+            referenceType: 'SALE',
+            referenceId: sale.id,
+            itemId: item.itemId,
+            type: 'OUT',
           },
-          data: { quantity: { increment: item.quantity } },
+          orderBy: { id: 'asc' },
+        });
+        const carryCost = origOut?.unitCost ?? null;
+        const batch = await this.core.addBatch(tx, {
+          itemId: item.itemId,
+          warehouseId: sale.warehouseId,
+          quantity: item.quantity,
+          unitCost: carryCost ?? 0,
+          batchNo: `CANCELLED-SALE-${sale.invoiceNo}`,
         });
 
         await tx.stockMovement.create({
@@ -404,6 +432,8 @@ export class SalesService {
             itemId: item.itemId,
             type: 'IN',
             quantity: item.quantity,
+            unitCost: carryCost,
+            batchId: batch.id,
             targetWarehouseId: sale.warehouseId,
             referenceType: 'SALE',
             referenceId: sale.id,
@@ -411,6 +441,8 @@ export class SalesService {
             userId: userId ? Number(userId) || null : null,
           },
         });
+
+        await this.core.evaluateAlerts(tx, item.itemId, sale.warehouseId);
       }
 
       // Revert customer owed

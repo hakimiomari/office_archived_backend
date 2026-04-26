@@ -37,6 +37,22 @@ export class StockInDto {
   @Min(0.0001)
   quantity: number;
 
+  @ApiProperty({ required: false, description: 'Per-unit cost; recorded on the FIFO batch' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  unitCost?: number;
+
+  @ApiProperty({ required: false, description: 'Optional batch label/lot number' })
+  @IsOptional()
+  @IsString()
+  batchNo?: string;
+
+  @ApiProperty({ required: false, description: 'Optional expiry date (ISO)' })
+  @IsOptional()
+  @IsString()
+  expiryDate?: string;
+
   @ApiProperty({ enum: StockMovementReference, default: StockMovementReference.MANUAL })
   @IsOptional()
   @IsEnum(StockMovementReference)
@@ -46,6 +62,11 @@ export class StockInDto {
   @IsOptional()
   @IsInt()
   referenceId?: number;
+
+  @ApiProperty({ required: false, description: 'Idempotency key — replaying the same key returns the original movement' })
+  @IsOptional()
+  @IsString()
+  idempotencyKey?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -77,6 +98,11 @@ export class StockOutDto {
   @IsOptional()
   @IsInt()
   referenceId?: number;
+
+  @ApiProperty({ required: false, description: 'Idempotency key for safe retries' })
+  @IsOptional()
+  @IsString()
+  idempotencyKey?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

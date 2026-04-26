@@ -7,7 +7,7 @@
 generator client {
   provider = "prisma-client-js"
   // output   = "../generated/prisma"
-    seed     = "ts-node --transpile-only prisma/seed.ts"
+  seed     = "ts-node --transpile-only prisma/seed.ts"
 }
 
 datasource db {
@@ -16,59 +16,55 @@ datasource db {
 }
 
 model User {
-  id              Int      @id @default(autoincrement())
+  id              Int          @id @default(autoincrement())
   name            String
-  email           String   @unique
+  email           String       @unique
   password        String?
-  googleId        String? @unique
-  profile_picture  String?
-  isActive        Boolean  @default(true)
-  roles           Role[]   @relation("UserRoles")
+  googleId        String?      @unique
+  profile_picture String?
+  isActive        Boolean      @default(true)
+  roles           Role[]       @relation("UserRoles")
   permissions     Permission[]
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  created_by       Int?
-  updated_by       Int?
-
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
+  created_by      Int?
+  updated_by      Int?
 
   created_by_user User? @relation("UserCreatedBy", fields: [created_by], references: [id])
   updated_by_user User? @relation("UserUpdatedBy", fields: [updated_by], references: [id])
 
-
   createdUsers User[] @relation("UserCreatedBy")
   updatedUsers User[] @relation("UserUpdatedBy")
 
-  created_roles    Role[] @relation("CreatedRoles")
+  created_roles Role[] @relation("CreatedRoles")
 
   @@map("users") // This is optional, but if you want to map it to 'users', you can use this
-
 }
 
 model Role {
-  id           Int          @id @default(autoincrement())
-  name         String       @unique
-  description  String?
-  permissions  Permission[] @relation("RolePermissions")
-  users        User[]       @relation("UserRoles")
-  created_by   Int
-  created_at   DateTime     @default(now())
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  description String?
+  permissions Permission[] @relation("RolePermissions")
+  users       User[]       @relation("UserRoles")
+  created_by  Int
+  created_at  DateTime     @default(now())
 
   created_by_user User @relation("CreatedRoles", fields: [created_by], references: [id])
-
 
   @@map("roles")
 }
 
 model Permission {
-  id    Int     @id @default(autoincrement())
-  name  String  @unique
+  id         Int      @id @default(autoincrement())
+  name       String   @unique
   group_name String
-  label String
-  roles Role[]  @relation("RolePermissions")
+  label      String
+  roles      Role[]   @relation("RolePermissions")
   created_at DateTime @default(now())
 
   created_by Int?
-  user  User? @relation(fields: [created_by], references: [id])
+  user       User? @relation(fields: [created_by], references: [id])
 
   @@index([created_by])
   @@map("permissions")
@@ -108,25 +104,73 @@ enum PurchaseStatus {
   CANCELLED
 }
 
-model Item {
-  id            Int          @id @default(autoincrement())
-  name          String
-  sku           String?      @unique
-  category      ItemCategory @default(OTHER)
-  unit          String       @default("pcs")
-  description   String?      @db.Text
-  minStock      Float        @default(0)
-  salePrice     Float        @default(0)
-  purchasePrice Float        @default(0)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+enum AlertType {
+  LOW_STOCK
+  OVERSTOCK
+  DEAD_STOCK
+  REORDER
+}
 
-  stocks        InventoryStock[]
-  movements     StockMovement[]
-  purchaseItems PurchaseItem[]
-  saleItems     SaleItem[]
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+enum StockCountStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String
+  slug        String?  @unique
+  description String?  @db.Text
+  parentId    Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  parent   Category?  @relation("CategoryParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryParent")
+  items    Item[]
+
+  @@unique([parentId, name])
+  @@index([parentId])
+  @@map("categories")
+}
+
+model Item {
+  id              Int          @id @default(autoincrement())
+  name            String
+  sku             String?      @unique
+  category        ItemCategory @default(OTHER)
+  categoryId      Int?
+  unit            String       @default("pcs")
+  description     String?      @db.Text
+  minStock        Float        @default(0)
+  maxStock        Float?
+  reorderPoint    Float?
+  reorderQuantity Float?
+  leadTimeDays    Int?
+  salePrice       Float        @default(0)
+  purchasePrice   Float        @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  categoryRef     Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  stocks          InventoryStock[]
+  movements       StockMovement[]
+  purchaseItems   PurchaseItem[]
+  saleItems       SaleItem[]
+  batches         InventoryBatch[]
+  alerts          Alert[]
+  stockCountLines StockCountLine[]
 
   @@index([category])
+  @@index([categoryId])
   @@index([name])
   @@map("items")
 }
@@ -138,9 +182,12 @@ model Warehouse {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  stocks         InventoryStock[]
-  sourceMovements StockMovement[] @relation("SourceWarehouse")
-  targetMovements StockMovement[] @relation("TargetWarehouse")
+  stocks          InventoryStock[]
+  sourceMovements StockMovement[]  @relation("SourceWarehouse")
+  targetMovements StockMovement[]  @relation("TargetWarehouse")
+  batches         InventoryBatch[]
+  alerts          Alert[]
+  stockCounts     StockCount[]
 
   @@map("warehouses")
 }
@@ -150,6 +197,7 @@ model InventoryStock {
   itemId      Int
   warehouseId Int
   quantity    Float    @default(0)
+  version     Int      @default(0)
   updatedAt   DateTime @updatedAt
 
   item      Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
@@ -161,30 +209,121 @@ model InventoryStock {
   @@map("inventory_stock")
 }
 
+model InventoryBatch {
+  id          Int       @id @default(autoincrement())
+  itemId      Int
+  warehouseId Int
+  batchNo     String?
+  quantity    Float     @default(0)
+  unitCost    Float     @default(0)
+  receivedAt  DateTime  @default(now())
+  expiryDate  DateTime?
+  purchaseId  Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  item      Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  purchase  Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+
+  @@index([itemId, warehouseId])
+  @@index([receivedAt])
+  @@index([expiryDate])
+  @@index([purchaseId])
+  @@map("inventory_batches")
+}
+
 model StockMovement {
   id                Int                    @id @default(autoincrement())
   itemId            Int
   type              StockMovementType
   quantity          Float
+  unitCost          Float?
+  batchId           Int?
   sourceWarehouseId Int?
   targetWarehouseId Int?
   referenceType     StockMovementReference @default(MANUAL)
   referenceId       Int?
   purchaseId        Int?
   userId            Int?
+  idempotencyKey    String?                @unique
   notes             String?                @db.Text
   createdAt         DateTime               @default(now())
 
-  item             Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  sourceWarehouse  Warehouse? @relation("SourceWarehouse", fields: [sourceWarehouseId], references: [id], onDelete: SetNull)
-  targetWarehouse  Warehouse? @relation("TargetWarehouse", fields: [targetWarehouseId], references: [id], onDelete: SetNull)
-  purchase         Purchase?  @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  item            Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  sourceWarehouse Warehouse? @relation("SourceWarehouse", fields: [sourceWarehouseId], references: [id], onDelete: SetNull)
+  targetWarehouse Warehouse? @relation("TargetWarehouse", fields: [targetWarehouseId], references: [id], onDelete: SetNull)
+  purchase        Purchase?  @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
 
   @@index([itemId])
   @@index([type])
   @@index([createdAt])
   @@index([purchaseId])
+  @@index([referenceType, referenceId])
   @@map("stock_movements")
+}
+
+model Alert {
+  id           Int         @id @default(autoincrement())
+  type         AlertType
+  status       AlertStatus @default(OPEN)
+  itemId       Int
+  warehouseId  Int?
+  message      String      @db.Text
+  threshold    Float?
+  currentValue Float?
+  metadata     Json?
+  createdAt    DateTime    @default(now())
+  resolvedAt   DateTime?
+
+  item      Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  warehouse Warehouse? @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+
+  @@index([type])
+  @@index([status])
+  @@index([itemId])
+  @@index([warehouseId])
+  @@index([createdAt])
+  @@map("alerts")
+}
+
+model StockCount {
+  id          Int              @id @default(autoincrement())
+  reference   String?          @unique
+  warehouseId Int
+  status      StockCountStatus @default(DRAFT)
+  notes       String?          @db.Text
+  startedAt   DateTime         @default(now())
+  completedAt DateTime?
+  createdBy   String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  warehouse Warehouse        @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  lines     StockCountLine[]
+
+  @@index([warehouseId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("stock_counts")
+}
+
+model StockCountLine {
+  id           Int     @id @default(autoincrement())
+  stockCountId Int
+  itemId       Int
+  expectedQty  Float   @default(0)
+  countedQty   Float   @default(0)
+  variance     Float   @default(0)
+  notes        String? @db.Text
+
+  stockCount StockCount @relation(fields: [stockCountId], references: [id], onDelete: Cascade)
+  item       Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([stockCountId, itemId])
+  @@index([stockCountId])
+  @@index([itemId])
+  @@map("stock_count_lines")
 }
 
 model Supplier {
@@ -223,6 +362,7 @@ model Purchase {
   items     PurchaseItem[]
   movements StockMovement[]
   payments  SupplierPayment[]
+  batches   InventoryBatch[]
 
   @@index([supplierId])
   @@index([status])
@@ -279,11 +419,11 @@ enum EmployeeStatus {
 }
 
 model Department {
-  id          Int       @id @default(autoincrement())
-  name        String    @unique
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
   description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   employees Employee[]
 
@@ -291,21 +431,21 @@ model Department {
 }
 
 model Employee {
-  id           Int            @id @default(autoincrement())
-  firstName    String
-  lastName     String
-  email        String?        @unique
-  phone        String?
-  departmentId Int?
-  designation  String?
-  hireDate     DateTime?
-  status       EmployeeStatus @default(ACTIVE)
+  id             Int            @id @default(autoincrement())
+  firstName      String
+  lastName       String
+  email          String?        @unique
+  phone          String?
+  departmentId   Int?
+  designation    String?
+  hireDate       DateTime?
+  status         EmployeeStatus @default(ACTIVE)
   profilePicture String?
-  address      String?
-  notes        String?        @db.Text
-  createdBy    String?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  address        String?
+  notes          String?        @db.Text
+  createdBy      String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   sales      Sale[]
@@ -413,16 +553,16 @@ model SaleItem {
 }
 
 model Payment {
-  id            Int           @id @default(autoincrement())
-  saleId        Int
-  amount        Float
-  method        PaymentMethod @default(CASH)
-  paymentDate   DateTime      @default(now())
-  referenceNo   String?
-  notes         String?       @db.Text
-  employeeId    Int?
-  createdBy     String?
-  createdAt     DateTime      @default(now())
+  id          Int           @id @default(autoincrement())
+  saleId      Int
+  amount      Float
+  method      PaymentMethod @default(CASH)
+  paymentDate DateTime      @default(now())
+  referenceNo String?
+  notes       String?       @db.Text
+  employeeId  Int?
+  createdBy   String?
+  createdAt   DateTime      @default(now())
 
   sale     Sale      @relation(fields: [saleId], references: [id], onDelete: Cascade)
   employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)

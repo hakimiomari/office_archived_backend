@@ -90,6 +90,41 @@ export class InventoryController {
     return this.inventory.reportMonthlyUsage();
   }
 
+  @Get('reports/dead-stock')
+  @Permissions('inventory.read')
+  @ApiOperation({ summary: 'Items with no OUT movement in the last N days' })
+  reportDeadStock(@Query('days') days?: string) {
+    return this.inventory.reportDeadStock(days ? Number(days) : 90);
+  }
+
+  @Get('reports/sales-velocity')
+  @Permissions('inventory.read')
+  @ApiOperation({ summary: 'Sales velocity & fast/slow movers' })
+  reportSalesVelocity(@Query('days') days?: string) {
+    return this.inventory.reportSalesVelocity(days ? Number(days) : 30);
+  }
+
+  @Get('reports/turnover')
+  @Permissions('inventory.read')
+  @ApiOperation({ summary: 'Inventory turnover rate (COGS / avg inventory)' })
+  reportTurnover(@Query('days') days?: string) {
+    return this.inventory.reportTurnover(days ? Number(days) : 90);
+  }
+
+  @Get('reports/profit-per-product')
+  @Permissions('inventory.read')
+  @ApiOperation({ summary: 'Revenue, COGS and profit per product' })
+  reportProfitPerProduct(@Query('days') days?: string) {
+    return this.inventory.reportProfitPerProduct(days ? Number(days) : 30);
+  }
+
+  @Get('reports/reorder-suggestions')
+  @Permissions('inventory.read')
+  @ApiOperation({ summary: 'Items that need reordering with suggested quantities' })
+  reportReorderSuggestions() {
+    return this.inventory.reportReorderSuggestions();
+  }
+
   // -------------------- STOCK OPERATIONS --------------------
 
   @Post('stock/in')

@@ -10,6 +10,9 @@ import { MinioModule } from "./minio/minio.module";
 import { InventoryModule } from "./inventory/inventory.module";
 import { EmployeesModule } from "./employees/employees.module";
 import { SalesModule } from "./sales/sales.module";
+import { CategoriesModule } from "./categories/categories.module";
+import { StockCountsModule } from "./stock-counts/stock-counts.module";
+import { AlertsModule } from "./alerts/alerts.module";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
 import refreshToken from "./config/refresh-token.config";
@@ -33,6 +36,9 @@ import environmentValidation from "./config/environment.validation";
     InventoryModule,
     EmployeesModule,
     SalesModule,
+    CategoriesModule,
+    StockCountsModule,
+    AlertsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

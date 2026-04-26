@@ -4,9 +4,10 @@ import { SalesService } from './sales.service';
 import { InvoicePdfService } from './invoice-pdf.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
+import { InventoryModule } from '../inventory/inventory.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [PrismaModule, AuthModule, InventoryModule],
   controllers: [SalesController],
   providers: [SalesService, InvoicePdfService],
   exports: [SalesService],

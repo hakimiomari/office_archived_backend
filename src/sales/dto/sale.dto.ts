@@ -121,6 +121,11 @@ export class CreateSaleDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiProperty({ required: false, description: 'Idempotency key — replaying the same key returns the original sale' })
+  @IsOptional()
+  @IsString()
+  idempotencyKey?: string;
 }
 
 export class UpdateSaleDto {

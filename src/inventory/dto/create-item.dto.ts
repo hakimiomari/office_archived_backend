@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsNotEmpty,
   IsNumber,
+  IsInt,
   Min,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
@@ -33,6 +34,11 @@ export class CreateItemDto {
   @IsEnum(ItemCategory)
   category?: ItemCategory;
 
+  @ApiProperty({ required: false, description: 'FK to Category (hierarchy)' })
+  @IsOptional()
+  @IsInt()
+  categoryId?: number;
+
   @ApiProperty({ example: 'pcs', default: 'pcs' })
   @IsOptional()
   @IsString()
@@ -48,6 +54,30 @@ export class CreateItemDto {
   @IsNumber()
   @Min(0)
   minStock?: number;
+
+  @ApiProperty({ example: 200, required: false })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  maxStock?: number;
+
+  @ApiProperty({ example: 20, required: false, description: 'Trigger reorder when total stock <= reorderPoint' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  reorderPoint?: number;
+
+  @ApiProperty({ example: 100, required: false, description: 'Suggested quantity to reorder' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  reorderQuantity?: number;
+
+  @ApiProperty({ example: 7, required: false, description: 'Supplier lead time in days' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  leadTimeDays?: number;
 
   @ApiProperty({ example: 150, default: 0 })
   @IsOptional()
