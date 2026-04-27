@@ -620,6 +620,13 @@ export class SalesService {
       unpaidSum,
       partialSum,
       totalPaidMonth,
+      // total amount spent on RECEIVED purchases (cash spent on inventory)
+      totalPurchasesAgg,
+      // realized revenue + cost of sold goods (matched, gross-margin profit)
+      realizedRevenueAgg,
+      realizedCogsRows,
+      // unsold inventory at cost vs sale price (projected profit if it sells)
+      projectedRows,
     ] = await Promise.all([
       this.prisma.sale.count({ where: { saleStatus: 'COMPLETED' } }),
       this.prisma.sale.aggregate({
@@ -655,11 +662,59 @@ export class SalesService {
         where: { paymentDate: { gte: monthStart } },
         _sum: { amount: true },
       }),
+      this.prisma.purchase.aggregate({
+        where: { status: 'RECEIVED' },
+        _sum: { totalAmount: true, paidAmount: true, remainingAmount: true },
+      }),
+      this.prisma.sale.aggregate({
+        where: { saleStatus: 'COMPLETED' },
+        _sum: { totalAmount: true },
+      }),
+      // COGS for completed sales: prefer recorded movement.unitCost, fall back
+      // to item.purchasePrice when the cost wasn't captured (legacy rows).
+      this.prisma.$queryRaw<{ cogs: number | null }[]>`
+        SELECT COALESCE(SUM(sm.quantity * COALESCE(sm."unitCost", i."purchasePrice")), 0)::float AS cogs
+        FROM stock_movements sm
+        JOIN items i ON i.id = sm."itemId"
+        JOIN sales s ON s.id = sm."referenceId"
+        WHERE sm."referenceType" = 'SALE'
+          AND sm.type = 'OUT'
+          AND s."saleStatus" = 'COMPLETED'
+      `,
+      // Projected profit on currently-on-hand stock if everything sold at salePrice.
+      this.prisma.$queryRaw<{
+        unsoldcost: number | null;
+        unsoldrevenue: number | null;
+      }[]>`
+        SELECT COALESCE(SUM(s.quantity * i."purchasePrice"), 0)::float AS unsoldcost,
+               COALESCE(SUM(s.quantity * i."salePrice"), 0)::float AS unsoldrevenue
+        FROM inventory_stock s
+        JOIN items i ON i.id = s."itemId"
+        WHERE s.quantity > 0
+      `,
     ]);
 
     const pendingPayments =
       (unpaidSum._sum.remainingAmount ?? 0) +
       (partialSum._sum.remainingAmount ?? 0);
+
+    const totalPurchases = totalPurchasesAgg._sum.totalAmount ?? 0;
+    const purchasesPaid = totalPurchasesAgg._sum.paidAmount ?? 0;
+    const purchasesRemaining = totalPurchasesAgg._sum.remainingAmount ?? 0;
+
+    const realizedRevenue = realizedRevenueAgg._sum.totalAmount ?? 0;
+    const realizedCogs = Number(realizedCogsRows[0]?.cogs ?? 0);
+    const realizedProfit = realizedRevenue - realizedCogs;
+    // "Net profit" from a cash-flow standpoint: gross margin minus the
+    // outstanding supplier liability that still has to be settled.
+    const netProfit = realizedProfit - purchasesRemaining;
+
+    const unsoldCost = Number(projectedRows[0]?.unsoldcost ?? 0);
+    const unsoldRevenue = Number(projectedRows[0]?.unsoldrevenue ?? 0);
+    const projectedProfit = unsoldRevenue - unsoldCost;
+
+    // Best-case profit if every unit currently on hand sells at salePrice.
+    const approximateProfit = realizedProfit + projectedProfit;
 
     return {
       totalSales,
@@ -668,6 +723,18 @@ export class SalesService {
       totalCustomers,
       pendingPayments,
       monthCashReceived: totalPaidMonth._sum.amount ?? 0,
+      // New KPIs
+      totalPurchases,
+      purchasesPaid,
+      purchasesRemaining,
+      realizedRevenue,
+      realizedCogs,
+      realizedProfit,
+      netProfit,
+      unsoldCost,
+      unsoldRevenue,
+      projectedProfit,
+      approximateProfit,
     };
   }
 
