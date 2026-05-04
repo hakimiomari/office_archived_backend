@@ -138,7 +138,7 @@ export class AlertsService {
             currentValue: c.totalStock,
             threshold: days,
             message: `${c.name} has had no OUT movement for ${days}+ days (stock: ${c.totalStock})`,
-          },
+          } as any,
         });
         opened++;
       } else if (!isDead && open) {

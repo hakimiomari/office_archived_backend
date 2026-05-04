@@ -22,6 +22,7 @@ import {
   OverdueFilterDto,
 } from './dto/payment.dto';
 import { InventoryCoreService } from '../inventory/inventory-core.service';
+import { tenantSqlFilter } from '../tenant/tenant-sql';
 
 @Injectable()
 export class SalesService {
@@ -36,7 +37,8 @@ export class SalesService {
 
   async createCustomer(dto: CreateCustomerDto, userId?: string) {
     return this.prisma.customer.create({
-      data: { ...dto, createdBy: userId },
+      // companyId is injected at runtime by the tenant-scoped Prisma extension.
+      data: { ...dto, createdBy: userId } as any,
     });
   }
 
@@ -232,7 +234,7 @@ export class SalesService {
               lineTotal: li.quantity * li.unitPrice - (li.discount ?? 0),
             })),
           },
-        },
+        } as any,
         include: {
           customer: true,
           items: { include: { item: true } },
@@ -276,7 +278,7 @@ export class SalesService {
             referenceId: sale.id,
             idempotencyKey: idempKey,
             notes: `Sale ${invoiceNo}`,
-          },
+          } as any,
         });
 
         await this.core.evaluateAlerts(tx, li.itemId, dto.warehouseId);
@@ -292,7 +294,7 @@ export class SalesService {
             paymentDate: dto.saleDate ? new Date(dto.saleDate) : new Date(),
             employeeId: dto.employeeId,
             createdBy: userId,
-          },
+          } as any,
         });
       }
 
@@ -439,7 +441,7 @@ export class SalesService {
             referenceId: sale.id,
             notes: `Cancelled sale ${sale.invoiceNo}`,
             userId: userId ? Number(userId) || null : null,
-          },
+          } as any,
         });
 
         await this.core.evaluateAlerts(tx, item.itemId, sale.warehouseId);
@@ -499,7 +501,7 @@ export class SalesService {
           notes: dto.notes,
           employeeId: dto.employeeId,
           createdBy: userId,
-        },
+        } as any,
       });
 
       const newPaid = sale.paidAmount + dto.amount;

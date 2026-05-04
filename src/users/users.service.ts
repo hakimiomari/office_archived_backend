@@ -15,6 +15,7 @@ import { CrcreateGoogleUserProvider } from './providers/crcreate-google-user.pro
 import { GoogleUserInterface } from './interfaces/google-user.interface';
 import { HashingProvider } from 'src/auth/providers/hashing.provider';
 import { MinioService } from 'src/minio/minio.service';
+import { effectiveCompanyId, isSuperAdmin } from 'src/tenant/tenant-context';
 
 @Injectable()
 export class UserService {
@@ -36,7 +37,16 @@ export class UserService {
   /** List all users with pagination and search */
   async findAll(page = 1, limit = 10, search?: string) {
     const skip = (page - 1) * limit;
-    const where = search
+    // Tenant scoping: User is not in TENANT_MODELS (auth lookups need to find
+    // SUPER_ADMINs whose companyId is null), so we apply the filter manually
+    // here. SUPER_ADMINs unscoped see everyone; SUPER_ADMINs scoped to a
+    // tenant via the picker, and any company user, see only that company's
+    // users.
+    const cid = effectiveCompanyId();
+    const tenantWhere: any =
+      isSuperAdmin() && cid == null ? {} : { companyId: cid };
+
+    const searchWhere: any = search
       ? {
           OR: [
             {
@@ -55,6 +65,8 @@ export class UserService {
         }
       : {};
 
+    const where = { ...tenantWhere, ...searchWhere };
+
     const [data, total] = await Promise.all([
       this.prismaService.user.findMany({
         where,
@@ -67,6 +79,9 @@ export class UserService {
           email: true,
           profile_picture: true,
           googleId: true,
+          userRole: true,
+          companyId: true,
+          company: { select: { id: true, name: true } },
           created_at: true,
           updated_at: true,
           roles: {
@@ -228,6 +243,11 @@ export class UserService {
         email: true,
         profile_picture: true,
         googleId: true,
+        userRole: true,
+        companyId: true,
+        company: {
+          select: { id: true, name: true, slug: true, isActive: true },
+        },
         created_at: true,
         updated_at: true,
         roles: {

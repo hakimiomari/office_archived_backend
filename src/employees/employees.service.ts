@@ -40,7 +40,7 @@ export class EmployeesService {
           address: dto.address,
           notes: dto.notes,
           createdBy: userId,
-        },
+        } as any,
         include: { department: true },
       });
     } catch (err: any) {
@@ -140,7 +140,7 @@ export class EmployeesService {
         data: {
           name: dto.name,
           description: dto.description,
-        },
+        } as any,
       });
     } catch (err: any) {
       if (err?.code === 'P2002') {

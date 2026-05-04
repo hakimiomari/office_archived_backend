@@ -30,6 +30,7 @@ import {
   PurchaseFilterDto,
 } from "./dto/inventory-filter.dto";
 import { InventoryCoreService } from "./inventory-core.service";
+import { tenantSqlFilter } from "../tenant/tenant-sql";
 
 @Injectable()
 export class InventoryService {
@@ -44,7 +45,7 @@ export class InventoryService {
 
   async createItem(dto: CreateItemDto) {
     try {
-      return await this.prisma.item.create({ data: dto });
+      return await this.prisma.item.create({ data: dto as any });
     } catch (err: any) {
       if (err?.code === "P2002") {
         throw new ConflictException(`SKU "${dto.sku}" already exists`);
@@ -143,7 +144,7 @@ export class InventoryService {
   // =========================================================================
 
   async createWarehouse(dto: CreateWarehouseDto) {
-    return this.prisma.warehouse.create({ data: dto });
+    return this.prisma.warehouse.create({ data: dto as any });
   }
 
   async findAllWarehouses(filters: PaginationDto) {
@@ -209,7 +210,7 @@ export class InventoryService {
   // =========================================================================
 
   async createSupplier(dto: CreateSupplierDto) {
-    return this.prisma.supplier.create({ data: dto });
+    return this.prisma.supplier.create({ data: dto as any });
   }
 
   async findAllSuppliers(filters: PaginationDto) {
@@ -314,7 +315,7 @@ export class InventoryService {
             idempotencyKey: dto.idempotencyKey,
             notes: dto.notes,
             userId: userId ?? null,
-          },
+          } as any,
           include: { item: true, targetWarehouse: true },
         });
 
@@ -384,7 +385,7 @@ export class InventoryService {
             idempotencyKey: dto.idempotencyKey,
             notes: dto.notes,
             userId: userId ?? null,
-          },
+          } as any,
           include: { item: true, sourceWarehouse: true },
         });
 
@@ -466,7 +467,7 @@ export class InventoryService {
           referenceType: "TRANSFER",
           notes: dto.notes,
           userId: userId ?? null,
-        },
+        } as any,
         include: { item: true, sourceWarehouse: true, targetWarehouse: true },
       });
 
@@ -509,7 +510,7 @@ export class InventoryService {
           warehouseId: dto.warehouseId,
           quantity: dto.newQuantity,
           version: 1,
-        },
+        } as any,
       });
 
       // Reconcile FIFO batches with the absolute target. If reducing,
@@ -542,7 +543,7 @@ export class InventoryService {
           referenceType: "ADJUSTMENT",
           notes: dto.notes,
           userId: userId ?? null,
-        },
+        } as any,
       });
 
       await this.core.evaluateAlerts(tx, dto.itemId, dto.warehouseId);
@@ -628,7 +629,7 @@ export class InventoryService {
               price: i.price ?? 0,
             })),
           },
-        },
+        } as any,
         include: { items: { include: { item: true } }, supplier: true },
       });
 
@@ -644,7 +645,7 @@ export class InventoryService {
               ? new Date(dto.purchaseDate)
               : new Date(),
             createdBy: userId,
-          },
+          } as any,
         });
       }
       if (dto.supplierId && remainingAmount > 0) {
@@ -656,7 +657,7 @@ export class InventoryService {
 
       // If marked as RECEIVED and a target warehouse is provided, create IN movements + FIFO batches
       if (dto.status === "RECEIVED" && dto.targetWarehouseId) {
-        for (const pi of purchase.items) {
+        for (const pi of (purchase as any).items as Array<{ itemId: number; quantity: number; price: number }>) {
           await this.core.atomicIncrement(
             tx,
             pi.itemId,
@@ -682,7 +683,7 @@ export class InventoryService {
               referenceId: purchase.id,
               purchaseId: purchase.id,
               notes: `Auto IN from purchase #${purchase.id}`,
-            },
+            } as any,
           });
           await this.core.evaluateAlerts(
             tx,
@@ -813,7 +814,7 @@ export class InventoryService {
             referenceId: purchase.id,
             purchaseId: purchase.id,
             notes: `Received from purchase #${purchase.id}`,
-          },
+          } as any,
         });
         await this.core.evaluateAlerts(tx, pi.itemId, targetWarehouseId);
       }
@@ -863,7 +864,7 @@ export class InventoryService {
           referenceNo: dto.referenceNo,
           notes: dto.notes,
           createdBy: userId,
-        },
+        } as any,
       });
 
       // Update purchase balance if linked
@@ -977,11 +978,12 @@ export class InventoryService {
       this.prisma.$queryRaw<{ count: bigint }[]>`
           SELECT COUNT(*)::bigint AS count
           FROM items i
-          WHERE COALESCE((
-            SELECT SUM(quantity)
-            FROM inventory_stock
-            WHERE "itemId" = i.id
-          ), 0) < i."minStock"
+          WHERE ${tenantSqlFilter('i."companyId"')}
+            AND COALESCE((
+              SELECT SUM(quantity)
+              FROM inventory_stock
+              WHERE "itemId" = i.id
+            ), 0) < i."minStock"
         `,
     ]);
 
@@ -1057,7 +1059,8 @@ export class InventoryService {
       SELECT DATE_TRUNC('month', "createdAt") AS month,
              SUM(quantity)::float AS total
       FROM stock_movements
-      WHERE type = 'OUT'
+      WHERE ${tenantSqlFilter('"companyId"')}
+        AND type = 'OUT'
         AND "createdAt" >= NOW() - INTERVAL '12 months'
       GROUP BY month
       ORDER BY month ASC
@@ -1086,7 +1089,8 @@ export class InventoryService {
              COALESCE((SELECT SUM(quantity) FROM inventory_stock WHERE "itemId" = i.id), 0)::float AS "totalStock",
              (SELECT MAX("createdAt") FROM stock_movements WHERE "itemId" = i.id AND type = 'OUT') AS "lastOutAt"
       FROM items i
-      WHERE COALESCE((SELECT SUM(quantity) FROM inventory_stock WHERE "itemId" = i.id), 0) > 0
+      WHERE ${tenantSqlFilter('i."companyId"')}
+        AND COALESCE((SELECT SUM(quantity) FROM inventory_stock WHERE "itemId" = i.id), 0) > 0
         AND (
           (SELECT MAX("createdAt") FROM stock_movements WHERE "itemId" = i.id AND type = 'OUT') IS NULL
           OR (SELECT MAX("createdAt") FROM stock_movements WHERE "itemId" = i.id AND type = 'OUT') < ${cutoff}
@@ -1124,6 +1128,7 @@ export class InventoryService {
       FROM items i
       LEFT JOIN stock_movements sm
         ON sm."itemId" = i.id AND sm.type = 'OUT' AND sm."createdAt" >= ${start}
+      WHERE ${tenantSqlFilter('i."companyId"')}
       GROUP BY i.id, i.name, i.sku
       ORDER BY "soldQty" DESC
     `;
@@ -1144,12 +1149,14 @@ export class InventoryService {
       SELECT COALESCE(SUM(sm.quantity * COALESCE(sm."unitCost", i."purchasePrice")), 0)::float AS cogs
       FROM stock_movements sm
       JOIN items i ON i.id = sm."itemId"
-      WHERE sm.type = 'OUT' AND sm."createdAt" >= ${start}
+      WHERE ${tenantSqlFilter('sm."companyId"')}
+        AND sm.type = 'OUT' AND sm."createdAt" >= ${start}
     `;
     const invValue = await this.prisma.$queryRaw<{ value: number | null }[]>`
       SELECT COALESCE(SUM(s.quantity * i."purchasePrice"), 0)::float AS value
       FROM inventory_stock s
       JOIN items i ON i.id = s."itemId"
+      WHERE ${tenantSqlFilter('s."companyId"')}
     `;
     const cogs = Number(cogsRow[0]?.cogs ?? 0);
     const avgInv = Number(invValue[0]?.value ?? 0);
@@ -1202,7 +1209,8 @@ export class InventoryService {
       LEFT JOIN sales s ON s.id = si."saleId"
         AND s."saleStatus" = 'COMPLETED'
         AND s."saleDate" >= ${start}
-      WHERE s.id IS NOT NULL
+      WHERE ${tenantSqlFilter('i."companyId"')}
+        AND s.id IS NOT NULL
       GROUP BY i.id, i.name, i.sku
       ORDER BY profit DESC
     `;

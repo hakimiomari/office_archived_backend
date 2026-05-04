@@ -64,22 +64,32 @@ export class SeedService {
     }
     console.log('✅ Permissions seeded');
 
-    // ─── 2. CREATE ADMIN USER ───
+    // ─── 2. CREATE SUPER ADMIN USER ───
+    // The seeded admin is the system-wide SUPER_ADMIN: no companyId, full
+    // access to every tenant, and the only one allowed to create companies.
+    // The `update` block here is critical: if this user already existed
+    // (e.g. from a previous seed run before multi-tenancy was added), we
+    // promote them to SUPER_ADMIN now.
     const password = 'admin';
     const hashPassword = await this.hashingProvider.hashPassword(password);
 
     const adminUser = await this.prismaService.user.upsert({
       where: { email: 'hakimikamranullah@gmail.com' },
-      update: {},
+      update: {
+        userRole: 'SUPER_ADMIN',
+        companyId: null,
+      } as any,
       create: {
         name: 'Kamranullah Hakimi',
         email: 'hakimikamranullah@gmail.com',
         password: hashPassword,
         profile_picture:
           'https://avatars.githubusercontent.com/u/101364769?v=4',
-      },
+        userRole: 'SUPER_ADMIN',
+        companyId: null,
+      } as any,
     });
-    console.log('✅ Admin user seeded');
+    console.log('✅ Super admin user seeded');
 
     // ─── 3. ROLES ───
     const allPermissions = await this.prismaService.permission.findMany();

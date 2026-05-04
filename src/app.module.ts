@@ -13,8 +13,11 @@ import { SalesModule } from "./sales/sales.module";
 import { CategoriesModule } from "./categories/categories.module";
 import { StockCountsModule } from "./stock-counts/stock-counts.module";
 import { AlertsModule } from "./alerts/alerts.module";
+import { CompaniesModule } from "./companies/companies.module";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
+import { APP_INTERCEPTOR } from "@nestjs/core";
+import { TenantInterceptor } from "./tenant/tenant.interceptor";
 import refreshToken from "./config/refresh-token.config";
 import environmentValidation from "./config/environment.validation";
 
@@ -39,8 +42,15 @@ import environmentValidation from "./config/environment.validation";
     CategoriesModule,
     StockCountsModule,
     AlertsModule,
+    CompaniesModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // Global interceptor: every request runs inside an AsyncLocalStorage
+    // context populated from req.user, so the Prisma tenant extension can
+    // scope queries automatically.
+    { provide: APP_INTERCEPTOR, useClass: TenantInterceptor },
+  ],
 })
 export class AppModule {}

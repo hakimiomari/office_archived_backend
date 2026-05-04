@@ -56,7 +56,7 @@ export class StockCountsService {
             variance: 0,
           })),
         },
-      },
+      } as any,
       include: { lines: true, warehouse: true },
     });
   }
@@ -134,7 +134,7 @@ export class StockCountsService {
               countedQty: line.countedQty,
               variance: line.countedQty - (stock?.quantity ?? 0),
               notes: line.notes,
-            },
+            } as any,
           });
         } else {
           await tx.stockCountLine.update({
@@ -189,7 +189,7 @@ export class StockCountsService {
               warehouseId: sc.warehouseId,
               quantity: line.countedQty,
               version: 1,
-            },
+            } as any,
           });
           if (variance > 0) {
             const item = await tx.item.findUnique({
@@ -220,7 +220,7 @@ export class StockCountsService {
               referenceId: sc.id,
               userId: userId ?? null,
               notes: `Stock count ${sc.reference ?? sc.id}`,
-            },
+            } as any,
           });
           await this.core.evaluateAlerts(tx, line.itemId, sc.warehouseId);
         }

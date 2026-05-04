@@ -72,7 +72,7 @@ export class InventoryCoreService {
         quantity: { increment: qty },
         version: { increment: 1 },
       },
-      create: { itemId, warehouseId, quantity: qty, version: 1 },
+      create: { itemId, warehouseId, quantity: qty, version: 1 } as any,
     });
   }
 
@@ -103,7 +103,7 @@ export class InventoryCoreService {
         expiryDate: args.expiryDate ?? null,
         purchaseId: args.purchaseId ?? null,
         batchNo: args.batchNo ?? null,
-      },
+      } as any,
     });
   }
 
@@ -192,7 +192,7 @@ export class InventoryCoreService {
             currentValue: totalStock,
             threshold,
             message,
-          },
+          } as any,
         });
       }
     };

@@ -19,7 +19,7 @@ export class CategoriesService {
   async create(dto: CreateCategoryDto) {
     if (dto.parentId) await this.ensure(dto.parentId);
     try {
-      return await this.prisma.category.create({ data: dto });
+      return await this.prisma.category.create({ data: dto as any });
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
