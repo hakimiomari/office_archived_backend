@@ -49,14 +49,8 @@ export class CreateUserProvider {
     //  - Anyone else can only create COMPANY_USER inside their own company.
     //    Any client-provided userRole / companyId is ignored.
     const ctx = getTenantContext();
-    const dtoUserRole = (createUserDto as any).userRole as
-      | "SUPER_ADMIN"
-      | "COMPANY_ADMIN"
-      | "COMPANY_USER"
-      | undefined;
-    const dtoCompanyId = (createUserDto as any).companyId as
-      | number
-      | undefined;
+    const dtoUserRole = createUserDto.userRole;
+    const dtoCompanyId = createUserDto.companyId;
 
     let resolvedUserRole: "SUPER_ADMIN" | "COMPANY_ADMIN" | "COMPANY_USER";
     let resolvedCompanyId: number | null;
@@ -90,7 +84,7 @@ export class CreateUserProvider {
         roles: {
           connect: [{ id: Number(createUserDto.role) }],
         },
-      } as any,
+      },
     });
 
     const permissions = [];
@@ -100,8 +94,8 @@ export class CreateUserProvider {
       newUser.email,
       role,
       permissions,
-      (newUser as any).userRole ?? "COMPANY_USER",
-      (newUser as any).companyId ?? null,
+      newUser.userRole ?? "COMPANY_USER",
+      newUser.companyId ?? null,
     );
 
     return {

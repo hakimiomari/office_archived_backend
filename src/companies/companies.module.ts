@@ -3,9 +3,10 @@ import { CompaniesController } from "./companies.controller";
 import { CompaniesService } from "./companies.service";
 import { PrismaModule } from "../prisma/prisma.module";
 import { AuthModule } from "../auth/auth.module";
+import { AccountingModule } from "../accounting/accounting.module";
 
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [PrismaModule, AuthModule, AccountingModule],
   controllers: [CompaniesController],
   providers: [CompaniesService],
   exports: [CompaniesService],

@@ -28,7 +28,11 @@ import googleAuthConfig from "./config/google-auth.config";
       useFactory: (configService: ConfigService) => ({
         secret: configService.get("access_token"),
         signOptions: {
-          expiresIn: configService.get<string>("access_token_expires_in"),
+          // `expiresIn` is typed as `ms.StringValue` (branded literal like
+          // '15m' | '1d' | …); ConfigService can only return plain string,
+          // so we cast at the framework boundary. Runtime is unchanged —
+          // `jsonwebtoken` parses the string via `ms()`.
+          expiresIn: configService.get<string>("access_token_expires_in") as any,
         },
       }),
     }),

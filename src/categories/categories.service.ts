@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { tenantCreateStrict } from '../tenant/tenant-create';
 import {
   CategoryFilterDto,
   CreateCategoryDto,
@@ -19,7 +20,11 @@ export class CategoriesService {
   async create(dto: CreateCategoryDto) {
     if (dto.parentId) await this.ensure(dto.parentId);
     try {
-      return await this.prisma.category.create({ data: dto as any });
+      return await this.prisma.category.create({
+        data: tenantCreateStrict<Prisma.CategoryUncheckedCreateInput>({
+          ...dto,
+        }),
+      });
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&

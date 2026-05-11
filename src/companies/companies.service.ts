@@ -5,6 +5,8 @@ import {
 } from "@nestjs/common";
 import { Prisma, PrismaClient } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { TenantService } from "../tenant/tenant.service";
+import { ChartOfAccountsService } from "../accounting/chart-of-accounts.service";
 import {
   CompanyFilterDto,
   CreateCompanyDto,
@@ -18,7 +20,11 @@ import {
  */
 @Injectable()
 export class CompaniesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly tenants: TenantService,
+    private readonly chart: ChartOfAccountsService,
+  ) {}
 
   // The Company model is not in TENANT_MODELS so the extension passes calls
   // through unchanged. We cast to PrismaClient just for clearer typing.
@@ -27,8 +33,9 @@ export class CompaniesService {
   }
 
   async create(dto: CreateCompanyDto) {
+    let company;
     try {
-      return await this.db.company.create({ data: dto });
+      company = await this.db.company.create({ data: dto });
     } catch (e) {
       if (
         e instanceof Prisma.PrismaClientKnownRequestError &&
@@ -40,6 +47,14 @@ export class CompaniesService {
       }
       throw e;
     }
+    // Seed the standard chart of accounts inside the new tenant's
+    // context so every business event afterward has the codes it
+    // needs to post journal entries. `seedDefault()` is idempotent,
+    // so a follow-up `/accounting/seed` is harmless.
+    await this.tenants.runForCompany(company.id, () =>
+      this.chart.seedDefault(),
+    );
+    return company;
   }
 
   async findAll(filters: CompanyFilterDto) {

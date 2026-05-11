@@ -11,6 +11,7 @@ import { UserService } from "src/users/users.service";
 import { HashingProvider } from "./hashing.provider";
 import { Response } from "express";
 import { TokenProvider } from "./token.provider";
+import { AuditService } from "src/tenant/audit.service";
 @Injectable()
 export class SignInProvider {
   constructor(
@@ -18,6 +19,7 @@ export class SignInProvider {
     private readonly userService: UserService,
     private readonly hashingProvider: HashingProvider,
     private readonly tokenProvider: TokenProvider,
+    private readonly audit: AuditService,
   ) {}
 
   public async signIn(signInDto: SignInDto, response: Response) {
@@ -50,8 +52,8 @@ export class SignInProvider {
       user.email,
       roles,
       uniquePermissions,
-      (user as any).userRole ?? "COMPANY_USER",
-      (user as any).companyId ?? null,
+      user.userRole ?? "COMPANY_USER",
+      user.companyId ?? null,
     );
     response.cookie("refresh_token", refresh_token, {
       httpOnly: true,
@@ -66,6 +68,14 @@ export class SignInProvider {
       sameSite: "strict",
       maxAge: 15 * 60 * 1000, // 15 minutes
       path: "/",
+    });
+    this.audit.log({
+      action: "auth.login",
+      entity: "User",
+      entityId: user.id,
+      userId: user.id,
+      email: user.email,
+      companyId: user.companyId ?? null,
     });
     const userData = {
       id: user.id,

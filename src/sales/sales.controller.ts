@@ -14,7 +14,10 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
-import { SalesService } from './sales.service';
+import { CustomersService } from './customers/customers.service';
+import { InvoicesService } from './invoices/invoices.service';
+import { PaymentsService } from './payments/payments.service';
+import { SalesReportsService } from './reports/sales-reports.service';
 import { InvoicePdfService } from './invoice-pdf.service';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { PermissionGuard } from '../guard/permissions.guard';
@@ -35,12 +38,31 @@ import {
   OverdueFilterDto,
 } from './dto/payment.dto';
 
+/**
+ * Single sales controller, deliberately kept as one file even though the
+ * service layer is split. Route paths must stay stable (the frontend
+ * hard-codes them) so combining all routes here is safer than splitting
+ * controllers and risking ordering / collision issues — for example, a
+ * `:id` route on one controller can shadow a literal `summary` on another
+ * if registration order is wrong. Keeping one controller eliminates that
+ * class of bug entirely.
+ *
+ * Each handler delegates to the right sub-service:
+ *  - SalesReportsService → /summary, /reports, /reports/pdf, /overdue,
+ *    /customers/:id/report-pdf
+ *  - CustomersService    → /customers/*
+ *  - PaymentsService     → /payments/*
+ *  - InvoicesService     → / (sales CRUD)
+ */
 @ApiTags('Sales')
 @Controller('sales')
 @UseGuards(AuthGuard, PermissionGuard)
 export class SalesController {
   constructor(
-    private readonly sales: SalesService,
+    private readonly customers: CustomersService,
+    private readonly invoices: InvoicesService,
+    private readonly payments: PaymentsService,
+    private readonly reports: SalesReportsService,
     private readonly pdf: InvoicePdfService,
   ) {}
 
@@ -50,7 +72,7 @@ export class SalesController {
   @Permissions('sale.read')
   @ApiOperation({ summary: 'Get sales summary (today, month, pending)' })
   getSummary() {
-    return this.sales.getSummary();
+    return this.reports.getSummary();
   }
 
   @Get('reports')
@@ -62,7 +84,7 @@ export class SalesController {
     @Query('to') to?: string,
     @Query('warehouseId') warehouseId?: string,
   ) {
-    return this.sales.getReport(
+    return this.reports.getReport(
       period ?? 'monthly',
       from,
       to,
@@ -80,7 +102,7 @@ export class SalesController {
     @Query('warehouseId') warehouseId: string | undefined,
     @Res() res: Response,
   ) {
-    const data = await this.sales.getReport(
+    const data = await this.reports.getReport(
       period,
       from,
       to,
@@ -117,7 +139,7 @@ export class SalesController {
   @Permissions('sale.read')
   @ApiOperation({ summary: 'List overdue sales (dueDate passed, still unpaid or partial)' })
   getOverdue(@Query() filters: OverdueFilterDto) {
-    return this.sales.getOverdueSales(filters);
+    return this.reports.getOverdueSales(filters);
   }
 
   // -------------------- CUSTOMERS --------------------
@@ -127,7 +149,7 @@ export class SalesController {
   @ApiOperation({ summary: 'Create a customer' })
   createCustomer(@Body() dto: CreateCustomerDto, @Req() req: Request) {
     const user = req['user'];
-    return this.sales.createCustomer(
+    return this.customers.create(
       dto,
       user?.sub ? String(user.sub) : undefined,
     );
@@ -137,14 +159,14 @@ export class SalesController {
   @Permissions('customer.read')
   @ApiOperation({ summary: 'List customers' })
   listCustomers(@Query() filters: CustomerFilterDto) {
-    return this.sales.findAllCustomers(filters);
+    return this.customers.findAll(filters);
   }
 
   @Get('customers/:id')
   @Permissions('customer.read')
   @ApiOperation({ summary: 'Get customer by id' })
   getCustomer(@Param('id', ParseIntPipe) id: number) {
-    return this.sales.findOneCustomer(id);
+    return this.customers.findOne(id);
   }
 
   @Get('customers/:id/report-pdf')
@@ -158,7 +180,7 @@ export class SalesController {
     @Query('to') to: string | undefined,
     @Res() res: Response,
   ) {
-    const data = await this.sales.getCustomerReportData(id, from, to);
+    const data = await this.reports.getCustomerReportData(id, from, to);
     const buffer = await this.pdf.generateCustomerReport({
       customer: {
         id: data.customer.id,
@@ -204,14 +226,14 @@ export class SalesController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateCustomerDto,
   ) {
-    return this.sales.updateCustomer(id, dto);
+    return this.customers.update(id, dto);
   }
 
   @Delete('customers/:id')
   @Permissions('customer.delete')
   @ApiOperation({ summary: 'Delete customer' })
   removeCustomer(@Param('id', ParseIntPipe) id: number) {
-    return this.sales.removeCustomer(id);
+    return this.customers.remove(id);
   }
 
   // -------------------- PAYMENTS --------------------
@@ -221,7 +243,7 @@ export class SalesController {
   @ApiOperation({ summary: 'Record a payment against a sale' })
   createPayment(@Body() dto: CreatePaymentDto, @Req() req: Request) {
     const user = req['user'];
-    return this.sales.createPayment(
+    return this.payments.create(
       dto,
       user?.sub ? String(user.sub) : undefined,
     );
@@ -231,14 +253,14 @@ export class SalesController {
   @Permissions('payment.read')
   @ApiOperation({ summary: 'List payments' })
   listPayments(@Query() filters: PaymentFilterDto) {
-    return this.sales.findAllPayments(filters);
+    return this.payments.findAll(filters);
   }
 
   @Delete('payments/:id')
   @Permissions('payment.delete')
   @ApiOperation({ summary: 'Delete a payment (reverses its effect)' })
   removePayment(@Param('id', ParseIntPipe) id: number) {
-    return this.sales.removePayment(id);
+    return this.payments.remove(id);
   }
 
   // -------------------- SALES --------------------
@@ -248,7 +270,7 @@ export class SalesController {
   @ApiOperation({ summary: 'Create a sale (invoice)' })
   createSale(@Body() dto: CreateSaleDto, @Req() req: Request) {
     const user = req['user'];
-    return this.sales.createSale(
+    return this.invoices.create(
       dto,
       user?.sub ? String(user.sub) : undefined,
     );
@@ -258,14 +280,14 @@ export class SalesController {
   @Permissions('sale.read')
   @ApiOperation({ summary: 'List sales with filters' })
   listSales(@Query() filters: SaleFilterDto) {
-    return this.sales.findAllSales(filters);
+    return this.invoices.findAll(filters);
   }
 
   @Get(':id')
   @Permissions('sale.read')
   @ApiOperation({ summary: 'Get a sale by id' })
   getSale(@Param('id', ParseIntPipe) id: number) {
-    return this.sales.findOneSale(id);
+    return this.invoices.findOne(id);
   }
 
   @Get(':id/pdf')
@@ -275,7 +297,7 @@ export class SalesController {
     @Param('id', ParseIntPipe) id: number,
     @Res() res: Response,
   ) {
-    const sale = await this.sales.findOneSale(id);
+    const sale = await this.invoices.findOne(id);
     const buffer = await this.pdf.generate({
       invoiceNo: sale.invoiceNo,
       saleDate: sale.saleDate,
@@ -316,7 +338,7 @@ export class SalesController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateSaleDto,
   ) {
-    return this.sales.updateSale(id, dto);
+    return this.invoices.update(id, dto);
   }
 
   @Patch(':id/cancel')
@@ -324,7 +346,7 @@ export class SalesController {
   @ApiOperation({ summary: 'Cancel a sale and restore stock' })
   cancelSale(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
     const user = req['user'];
-    return this.sales.cancelSale(
+    return this.invoices.cancel(
       id,
       user?.sub ? String(user.sub) : undefined,
     );
@@ -334,6 +356,6 @@ export class SalesController {
   @Permissions('sale.delete')
   @ApiOperation({ summary: 'Delete a sale' })
   removeSale(@Param('id', ParseIntPipe) id: number) {
-    return this.sales.removeSale(id);
+    return this.invoices.remove(id);
   }
 }

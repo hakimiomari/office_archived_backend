@@ -96,8 +96,8 @@ export class GoogleAuthenticationService implements OnModuleInit {
           user.email,
           roleNames,
           uniquePermissions,
-          (user as any).userRole ?? "COMPANY_USER",
-          (user as any).companyId ?? null,
+          user.userRole ?? "COMPANY_USER",
+          user.companyId ?? null,
         );
 
       response.cookie("refresh_token", refresh_token, {
@@ -139,8 +139,8 @@ export class GoogleAuthenticationService implements OnModuleInit {
       newUser.email,
       newRoleNames,
       uniqueNewPermissions,
-      (createdUser as any)?.userRole ?? "COMPANY_USER",
-      (createdUser as any)?.companyId ?? null,
+      createdUser?.userRole ?? "COMPANY_USER",
+      createdUser?.companyId ?? null,
     );
 
     response.cookie("refresh_token", refresh_token, {

@@ -51,8 +51,261 @@ model Company {
   payments         Payment[]
   employees        Employee[]
   departments      Department[]
+  auditLogs        AuditLog[]
+  accounts         Account[]
+  journalEntries   JournalEntry[]
+  journalLines     JournalLine[]
+  bankAccounts     BankAccount[]
+  bankTransactions BankTransaction[]
+  reconciliations  Reconciliation[]
 
   @@map("companies")
+}
+
+// ================================================================
+//                          AUDIT LOG
+// Persistent, append-only record of every meaningful action: every
+// write to a tracked tenant model, every login, every SUPER_ADMIN
+// tenant scope change, every cross-tenant write that was blocked.
+//
+// `companyId` is nullable so system-level events (e.g. company
+// creation by a SUPER_ADMIN with no current tenant scope) still get
+// logged.
+//
+// `before` / `after` are JSON snapshots; we only populate them for
+// low-frequency writes (writes to Sale, Customer, Item, etc.) — the
+// hot stock-movement path skips diffs to avoid doubling DB load.
+// ================================================================
+// ================================================================
+//                       ACCOUNTING LAYER (§5.1)
+// Double-entry general ledger. Every business event (sale, purchase,
+// payment) emits a balanced `JournalEntry` whose `JournalLine` rows
+// sum (Σ debits = Σ credits). Reports (P&L, balance sheet, trial
+// balance) are then "select sum(debit) - sum(credit) from
+// journal_lines where accountId = ..." aggregates.
+// ================================================================
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+model Account {
+  id        Int         @id @default(autoincrement())
+  companyId Int
+  code      String
+  name      String
+  type      AccountType
+  parentId  Int?
+  isActive  Boolean     @default(true)
+  notes     String?     @db.Text
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  company  Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  parent   Account?      @relation("AccountParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children Account[]     @relation("AccountParent")
+  lines    JournalLine[]
+
+  deletedAt DateTime?
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([companyId, type])
+  @@index([parentId])
+  @@index([deletedAt])
+  @@map("accounts")
+}
+
+model JournalEntry {
+  id          Int       @id @default(autoincrement())
+  companyId   Int
+  entryNo     String
+  date        DateTime
+  description String
+  sourceType  String?
+  sourceId    Int?
+  isLocked    Boolean   @default(false)
+  lockedAt    DateTime?
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  company Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lines   JournalLine[]
+
+  deletedAt DateTime?
+
+  @@unique([companyId, entryNo])
+  @@index([companyId])
+  @@index([companyId, date])
+  @@index([sourceType, sourceId])
+  @@index([deletedAt])
+  @@map("journal_entries")
+}
+
+model JournalLine {
+  id             Int     @id @default(autoincrement())
+  journalEntryId Int
+  accountId      Int
+  companyId      Int
+  debit          Float   @default(0)
+  credit         Float   @default(0)
+  description    String?
+
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account      Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  company      Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  deletedAt DateTime?
+
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@index([companyId])
+  @@index([deletedAt])
+  @@map("journal_lines")
+}
+
+// ================================================================
+//                  BANK RECONCILIATION MODULE (§5.2)
+// Workflow:
+//   1. Operator imports a bank statement → creates BankTransaction rows.
+//   2. Operator (or scheduled job) runs auto-match: link bank rows to
+//      Payment (incoming) / SupplierPayment (outgoing) by amount +
+//      date window + reference.
+//   3. Unmatched rows go to a manual matcher UI.
+//   4. Operator closes the reconciliation for the period, locking it.
+// ================================================================
+enum BankTransactionDirection {
+  CREDIT // money INTO the bank account
+  DEBIT  // money OUT of the bank account
+}
+
+enum BankTransactionStatus {
+  UNMATCHED
+  MATCHED
+  IGNORED
+}
+
+enum ReconciliationStatus {
+  OPEN
+  COMPLETED
+}
+
+model BankAccount {
+  id             Int      @id @default(autoincrement())
+  companyId      Int
+  name           String
+  accountNumber  String?
+  currency       String   @default("USD")
+  provider       String?
+  openingBalance Float    @default(0)
+  notes          String?  @db.Text
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company         Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  transactions    BankTransaction[]
+  reconciliations Reconciliation[]
+
+  deletedAt DateTime?
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@index([deletedAt])
+  @@map("bank_accounts")
+}
+
+model BankTransaction {
+  id                       Int                      @id @default(autoincrement())
+  companyId                Int
+  bankAccountId            Int
+  statementDate            DateTime
+  direction                BankTransactionDirection
+  amount                   Float
+  description              String?
+  reference                String?
+  raw                      Json?
+  status                   BankTransactionStatus    @default(UNMATCHED)
+  matchedPaymentId         Int?
+  matchedSupplierPaymentId Int?
+  matchedAt                DateTime?
+  matchedBy                String?
+  importedAt               DateTime                 @default(now())
+
+  company                Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  bankAccount            BankAccount      @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  matchedPayment         Payment?         @relation(fields: [matchedPaymentId], references: [id], onDelete: SetNull)
+  matchedSupplierPayment SupplierPayment? @relation(fields: [matchedSupplierPaymentId], references: [id], onDelete: SetNull)
+
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([bankAccountId])
+  @@index([statementDate])
+  @@index([status])
+  @@index([matchedPaymentId])
+  @@index([matchedSupplierPaymentId])
+  @@index([companyId, status, statementDate])
+  @@index([deletedAt])
+  @@map("bank_transactions")
+}
+
+model Reconciliation {
+  id             Int                  @id @default(autoincrement())
+  companyId      Int
+  bankAccountId  Int
+  periodStart    DateTime
+  periodEnd      DateTime
+  status         ReconciliationStatus @default(OPEN)
+  openingBalance Float
+  closingBalance Float
+  notes          String?              @db.Text
+  createdBy      String?
+  completedAt    DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  bankAccount BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([bankAccountId])
+  @@index([status])
+  @@index([periodStart, periodEnd])
+  @@index([deletedAt])
+  @@map("reconciliations")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  companyId Int?
+  userId    Int?
+  email     String?
+  action    String
+  entity    String?
+  entityId  Int?
+  before    Json?
+  after     Json?
+  ipAddress String?
+  userAgent String?
+  requestId String?
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
 
 model User {
@@ -183,10 +436,13 @@ model Category {
   children Category[] @relation("CategoryParent")
   items    Item[]
 
+  deletedAt DateTime?
+
   @@unique([companyId, parentId, name])
   @@unique([companyId, slug])
   @@index([parentId])
   @@index([companyId])
+  @@index([deletedAt])
   @@map("categories")
 }
 
@@ -219,11 +475,16 @@ model Item {
   alerts          Alert[]
   stockCountLines StockCountLine[]
 
+  deletedAt DateTime?
+
   @@unique([companyId, sku])
   @@index([category])
   @@index([categoryId])
   @@index([companyId])
   @@index([name])
+  @@index([deletedAt])
+  // Item-list search + filter sorts by name within the tenant.
+  @@index([companyId, name])
   @@map("items")
 }
 
@@ -243,7 +504,10 @@ model Warehouse {
   alerts          Alert[]
   stockCounts     StockCount[]
 
+  deletedAt DateTime?
+
   @@index([companyId])
+  @@index([deletedAt])
   @@map("warehouses")
 }
 
@@ -260,10 +524,16 @@ model InventoryStock {
   item      Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
   warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
 
+  deletedAt DateTime?
+
   @@unique([itemId, warehouseId])
   @@index([itemId])
   @@index([warehouseId])
   @@index([companyId])
+  @@index([deletedAt])
+  // Tenant-scoped per-item stock aggregates (used in low-stock + dead-stock
+  // subqueries) benefit from a companyId-first composite.
+  @@index([companyId, itemId])
   @@map("inventory_stock")
 }
 
@@ -286,11 +556,14 @@ model InventoryBatch {
   warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   purchase  Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
 
+  deletedAt DateTime?
+
   @@index([itemId, warehouseId])
   @@index([receivedAt])
   @@index([expiryDate])
   @@index([purchaseId])
   @@index([companyId])
+  @@index([deletedAt])
   @@map("inventory_batches")
 }
 
@@ -318,12 +591,22 @@ model StockMovement {
   targetWarehouse Warehouse? @relation("TargetWarehouse", fields: [targetWarehouseId], references: [id], onDelete: SetNull)
   purchase        Purchase?  @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
 
+  deletedAt DateTime?
+
   @@index([itemId])
   @@index([type])
   @@index([createdAt])
   @@index([purchaseId])
   @@index([referenceType, referenceId])
   @@index([companyId])
+  @@index([deletedAt])
+  // Composite indexes for the heavy raw SQL in inventory reports:
+  //  - dead-stock + monthly-usage scans filter by companyId + type + createdAt.
+  //  - last-OUT-per-item lookups filter by companyId + itemId + createdAt.
+  //  - sale-COGS joins filter by companyId + (referenceType, referenceId).
+  @@index([companyId, type, createdAt])
+  @@index([companyId, itemId, createdAt])
+  @@index([companyId, referenceType, referenceId])
   @@map("stock_movements")
 }
 
@@ -340,10 +623,16 @@ model Alert {
   metadata     Json?
   createdAt    DateTime    @default(now())
   resolvedAt   DateTime?
+  /// First time the alert was dispatched to any notification channel.
+  /// `dispatchOpen()` skips alerts where this is set so cron re-runs
+  /// don't double-notify (§5.3).
+  dispatchedAt DateTime?
 
   company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   item      Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
   warehouse Warehouse? @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+
+  deletedAt DateTime?
 
   @@index([type])
   @@index([status])
@@ -351,6 +640,8 @@ model Alert {
   @@index([warehouseId])
   @@index([createdAt])
   @@index([companyId])
+  @@index([deletedAt])
+  @@index([companyId, status, dispatchedAt])
   @@map("alerts")
 }
 
@@ -371,11 +662,14 @@ model StockCount {
   warehouse Warehouse        @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   lines     StockCountLine[]
 
+  deletedAt DateTime?
+
   @@unique([companyId, reference])
   @@index([warehouseId])
   @@index([status])
   @@index([startedAt])
   @@index([companyId])
+  @@index([deletedAt])
   @@map("stock_counts")
 }
 
@@ -393,10 +687,13 @@ model StockCountLine {
   stockCount StockCount @relation(fields: [stockCountId], references: [id], onDelete: Cascade)
   item       Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
+  deletedAt DateTime?
+
   @@unique([stockCountId, itemId])
   @@index([stockCountId])
   @@index([itemId])
   @@index([companyId])
+  @@index([deletedAt])
   @@map("stock_count_lines")
 }
 
@@ -416,7 +713,10 @@ model Supplier {
   purchases Purchase[]
   payments  SupplierPayment[]
 
+  deletedAt DateTime?
+
   @@index([companyId])
+  @@index([deletedAt])
   @@map("suppliers")
 }
 
@@ -443,11 +743,17 @@ model Purchase {
   payments  SupplierPayment[]
   batches   InventoryBatch[]
 
+  deletedAt DateTime?
+
   @@index([supplierId])
   @@index([status])
   @@index([paymentStatus])
   @@index([purchaseDate])
   @@index([companyId])
+  @@index([deletedAt])
+  // Sales-report "purchases by period" aggregate + AP dashboard both
+  // filter by tenant + status + purchaseDate.
+  @@index([companyId, status, purchaseDate])
   @@map("purchases")
 }
 
@@ -464,14 +770,18 @@ model SupplierPayment {
   createdBy   String?
   createdAt   DateTime      @default(now())
 
-  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  supplier Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  purchase Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplier         Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  purchase         Purchase?         @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  bankTransactions BankTransaction[]
+
+  deletedAt DateTime?
 
   @@index([supplierId])
   @@index([purchaseId])
   @@index([paymentDate])
   @@index([companyId])
+  @@index([deletedAt])
   @@map("supplier_payments")
 }
 
@@ -487,9 +797,12 @@ model PurchaseItem {
   purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   item     Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
+  deletedAt DateTime?
+
   @@index([purchaseId])
   @@index([itemId])
   @@index([companyId])
+  @@index([deletedAt])
   @@map("purchase_items")
 }
 
@@ -515,8 +828,11 @@ model Department {
   company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   employees Employee[]
 
+  deletedAt DateTime?
+
   @@unique([companyId, name])
   @@index([companyId])
+  @@index([deletedAt])
   @@map("departments")
 }
 
@@ -543,11 +859,14 @@ model Employee {
   sales      Sale[]
   payments   Payment[]
 
+  deletedAt DateTime?
+
   @@unique([companyId, email])
   @@index([status])
   @@index([departmentId])
   @@index([firstName, lastName])
   @@index([companyId])
+  @@index([deletedAt])
   @@map("employees")
 }
 
@@ -591,9 +910,14 @@ model Customer {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   sales   Sale[]
 
+  deletedAt DateTime?
+
   @@index([name])
   @@index([phone])
   @@index([companyId])
+  @@index([deletedAt])
+  // Customer-list search sorted by createdAt is tenant-scoped.
+  @@index([companyId, name])
   @@map("customers")
 }
 
@@ -626,6 +950,8 @@ model Sale {
   items    SaleItem[]
   payments Payment[]
 
+  deletedAt DateTime?
+
   @@unique([companyId, invoiceNo])
   @@index([invoiceNo])
   @@index([customerId])
@@ -633,6 +959,14 @@ model Sale {
   @@index([paymentStatus])
   @@index([saleDate])
   @@index([companyId])
+  @@index([deletedAt])
+  // Composite indexes for hot report paths. Every report filters by
+  // tenant first, so leading with companyId lets these indexes also
+  // satisfy companyId-only queries via left-prefix scan.
+  @@index([companyId, saleDate])
+  @@index([companyId, paymentStatus, dueDate])
+  @@index([companyId, customerId, saleDate])
+  @@index([companyId, saleStatus, saleDate])
   @@map("sales")
 }
 
@@ -650,9 +984,12 @@ model SaleItem {
   sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
   item    Item    @relation(fields: [itemId], references: [id], onDelete: Restrict)
 
+  deletedAt DateTime?
+
   @@index([saleId])
   @@index([itemId])
   @@index([companyId])
+  @@index([deletedAt])
   @@map("sale_items")
 }
 
@@ -669,13 +1006,20 @@ model Payment {
   createdBy   String?
   createdAt   DateTime      @default(now())
 
-  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  sale     Sale      @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  sale             Sale              @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  employee         Employee?         @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  bankTransactions BankTransaction[]
+
+  deletedAt DateTime?
 
   @@index([saleId])
   @@index([employeeId])
   @@index([paymentDate])
   @@index([companyId])
+  @@index([deletedAt])
+  // Dashboard "cash received this month / period" aggregates filter
+  // by companyId + paymentDate range.
+  @@index([companyId, paymentDate])
   @@map("payments")
 }

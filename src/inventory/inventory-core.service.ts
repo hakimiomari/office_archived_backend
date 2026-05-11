@@ -6,6 +6,8 @@ import {
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { TenantQueryService } from "../tenant/tenant-query.service";
+import { tenantCreateStrict } from "../tenant/tenant-create";
 
 /**
  * Reusable atomic stock primitives shared by inventory and sales services.
@@ -23,7 +25,10 @@ import { PrismaService } from "../prisma/prisma.service";
 export class InventoryCoreService {
   private readonly logger = new Logger(InventoryCoreService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly tenantQuery: TenantQueryService,
+  ) {}
 
   /**
    * Atomically decrement inventory_stock.quantity. Postgres returns a row
@@ -37,15 +42,24 @@ export class InventoryCoreService {
     qty: number,
   ): Promise<void> {
     if (qty <= 0) throw new BadRequestException("Quantity must be > 0");
-    const updated = await tx.$executeRaw`
-      UPDATE inventory_stock
-         SET quantity = quantity - ${qty},
-             version  = version + 1,
-             "updatedAt" = NOW()
-       WHERE "itemId" = ${itemId}
-         AND "warehouseId" = ${warehouseId}
-         AND quantity >= ${qty}
-    `;
+    // Conditional UPDATE — the `quantity >= qty` predicate is what makes this
+    // race-safe. Tenant filter is defense-in-depth: (itemId, warehouseId) is
+    // already tenant-bound by upstream queries, but enforcing it here closes
+    // a foot-gun if a future caller passes ids that crossed tenants.
+    const updated = await this.tenantQuery.executeRawTx(
+      tx,
+      '"companyId"',
+      (TENANT) => Prisma.sql`
+        UPDATE inventory_stock
+           SET quantity = quantity - ${qty},
+               version  = version + 1,
+               "updatedAt" = NOW()
+         WHERE "itemId" = ${itemId}
+           AND "warehouseId" = ${warehouseId}
+           AND quantity >= ${qty}
+           AND ${TENANT}
+      `,
+    );
     if (updated === 0) {
       const stock = await tx.inventoryStock.findUnique({
         where: { itemId_warehouseId: { itemId, warehouseId } },
@@ -72,7 +86,12 @@ export class InventoryCoreService {
         quantity: { increment: qty },
         version: { increment: 1 },
       },
-      create: { itemId, warehouseId, quantity: qty, version: 1 } as any,
+      create: tenantCreateStrict<Prisma.InventoryStockUncheckedCreateInput>({
+        itemId,
+        warehouseId,
+        quantity: qty,
+        version: 1,
+      }),
     });
   }
 
@@ -94,7 +113,7 @@ export class InventoryCoreService {
     },
   ) {
     return tx.inventoryBatch.create({
-      data: {
+      data: tenantCreateStrict<Prisma.InventoryBatchUncheckedCreateInput>({
         itemId: args.itemId,
         warehouseId: args.warehouseId,
         quantity: args.quantity,
@@ -103,7 +122,7 @@ export class InventoryCoreService {
         expiryDate: args.expiryDate ?? null,
         purchaseId: args.purchaseId ?? null,
         batchNo: args.batchNo ?? null,
-      } as any,
+      }),
     });
   }
 
@@ -184,7 +203,7 @@ export class InventoryCoreService {
         });
       } else {
         await tx.alert.create({
-          data: {
+          data: tenantCreateStrict<Prisma.AlertUncheckedCreateInput>({
             type,
             status: "OPEN",
             itemId,
@@ -192,7 +211,7 @@ export class InventoryCoreService {
             currentValue: totalStock,
             threshold,
             message,
-          } as any,
+          }),
         });
       }
     };

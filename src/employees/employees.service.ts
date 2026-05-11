@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
+import { tenantCreateStrict } from '../tenant/tenant-create';
 import {
   CreateEmployeeDto,
   UpdateEmployeeDto,
@@ -27,7 +28,7 @@ export class EmployeesService {
   async createEmployee(dto: CreateEmployeeDto, userId?: string) {
     try {
       return await this.prisma.employee.create({
-        data: {
+        data: tenantCreateStrict<Prisma.EmployeeUncheckedCreateInput>({
           firstName: dto.firstName,
           lastName: dto.lastName,
           email: dto.email,
@@ -40,7 +41,7 @@ export class EmployeesService {
           address: dto.address,
           notes: dto.notes,
           createdBy: userId,
-        } as any,
+        }),
         include: { department: true },
       });
     } catch (err: any) {
@@ -137,10 +138,10 @@ export class EmployeesService {
   async createDepartment(dto: CreateDepartmentDto) {
     try {
       return await this.prisma.department.create({
-        data: {
+        data: tenantCreateStrict<Prisma.DepartmentUncheckedCreateInput>({
           name: dto.name,
           description: dto.description,
-        } as any,
+        }),
       });
     } catch (err: any) {
       if (err?.code === 'P2002') {

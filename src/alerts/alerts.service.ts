@@ -1,8 +1,15 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { InventoryCoreService } from '../inventory/inventory-core.service';
+import { TenantService } from '../tenant/tenant.service';
+import { TenantQueryService } from '../tenant/tenant-query.service';
+import { TenantLogger } from '../tenant/tenant-logger';
+import { tenantCreateStrict } from '../tenant/tenant-create';
+import { EventBus } from '../events/event-bus.service';
+import { EVENTS } from '../events/event-types';
+import { effectiveCompanyId } from '../tenant/tenant-context';
 import { AlertFilterDto } from './alerts.dto';
 
 /**
@@ -20,11 +27,14 @@ import { AlertFilterDto } from './alerts.dto';
  */
 @Injectable()
 export class AlertsService {
-  private readonly logger = new Logger(AlertsService.name);
+  private readonly logger = new TenantLogger(AlertsService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly core: InventoryCoreService,
+    private readonly tenants: TenantService,
+    private readonly tenantQuery: TenantQueryService,
+    private readonly events: EventBus,
   ) {}
 
   async findAll(filters: AlertFilterDto) {
@@ -112,14 +122,18 @@ export class AlertsService {
    */
   async scanDeadStock(days = 90): Promise<number> {
     const cutoff = new Date(Date.now() - days * 86400000);
-    const candidates = await this.prisma.$queryRaw<
+    const candidates = await this.tenantQuery.queryRaw<
       { id: number; name: string; totalStock: number; lastOutAt: Date | null }[]
-    >`
-      SELECT i.id, i.name,
-             COALESCE((SELECT SUM(quantity) FROM inventory_stock WHERE "itemId" = i.id), 0)::float AS "totalStock",
-             (SELECT MAX("createdAt") FROM stock_movements WHERE "itemId" = i.id AND type = 'OUT') AS "lastOutAt"
-      FROM items i
-    `;
+    >(
+      'i."companyId"',
+      (TENANT) => Prisma.sql`
+        SELECT i.id, i.name,
+               COALESCE((SELECT SUM(quantity) FROM inventory_stock WHERE "itemId" = i.id), 0)::float AS "totalStock",
+               (SELECT MAX("createdAt") FROM stock_movements WHERE "itemId" = i.id AND type = 'OUT') AS "lastOutAt"
+        FROM items i
+        WHERE ${TENANT}
+      `,
+    );
 
     let opened = 0;
     for (const c of candidates) {
@@ -131,14 +145,14 @@ export class AlertsService {
       });
       if (isDead && !open) {
         await this.prisma.alert.create({
-          data: {
+          data: tenantCreateStrict<Prisma.AlertUncheckedCreateInput>({
             type: 'DEAD_STOCK',
             status: 'OPEN',
             itemId: c.id,
             currentValue: c.totalStock,
             threshold: days,
             message: `${c.name} has had no OUT movement for ${days}+ days (stock: ${c.totalStock})`,
-          } as any,
+          }),
         });
         opened++;
       } else if (!isDead && open) {
@@ -152,51 +166,77 @@ export class AlertsService {
   }
 
   /**
-   * Hourly scanner. Re-evaluates thresholds, scans dead stock weekly-ish (once
-   * a day is enough since the time threshold is in days).
+   * Hourly scanner. Re-evaluates thresholds for every tenant in isolation, so
+   * a slow or failing tenant does not block the others. Each iteration runs
+   * inside a tenant context so Prisma's tenant extension scopes queries to
+   * that one company — without that, scanAll() would walk every item across
+   * every tenant in one giant pass.
    */
   @Cron(CronExpression.EVERY_HOUR)
   async hourly() {
-    try {
+    const summary = await this.tenants.forEachCompany(async (companyId) => {
       const scan = await this.scanAll();
-      this.logger.debug(
-        `Alert scan: scanned=${scan.scanned} opened=${scan.opened} resolved=${scan.resolved}`,
-      );
-      await this.dispatchOpen();
-    } catch (err) {
-      this.logger.error('Hourly alert scan failed', err);
-    }
+      const dispatched = await this.dispatchOpen();
+      return { companyId, ...scan, dispatched: dispatched.dispatched };
+    });
+    this.logger.debug(
+      `Hourly alert scan: tenants=${summary.total} succeeded=${summary.succeeded} failed=${summary.failed}`,
+    );
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_2AM)
   async dailyDeadStock() {
-    try {
-      const opened = await this.scanDeadStock(90);
-      this.logger.log(`Dead stock scan: opened ${opened} new alerts`);
-    } catch (err) {
-      this.logger.error('Dead stock scan failed', err);
-    }
+    const summary = await this.tenants.forEachCompany(async () => {
+      return this.scanDeadStock(90);
+    });
+    this.logger.log(
+      `Dead stock scan: tenants=${summary.total} succeeded=${summary.succeeded} failed=${summary.failed}`,
+    );
   }
 
   /**
-   * Dispatch every OPEN alert that has not yet been dispatched. Currently
-   * logs structured events — wire email/Slack/webhook here.
+   * Dispatch every OPEN alert that hasn't been dispatched yet. Emits
+   * `alert.triggered` for each, then stamps `dispatchedAt` so future
+   * cron runs skip it. The notifications module (§5.3) subscribes to
+   * `alert.triggered` and routes to log / webhook / future channels —
+   * this method owns idempotency, the listeners own delivery.
+   *
+   * If an alert is resolved and re-opens later (e.g. stock dips below
+   * minStock again), the row's `dispatchedAt` should be cleared by
+   * `evaluateAlerts` so a fresh notification fires. We accept the v1
+   * limitation that this isn't yet wired — re-opens currently don't
+   * re-notify.
    */
   async dispatchOpen() {
     const open = await this.prisma.alert.findMany({
-      where: { status: 'OPEN' },
+      where: { status: 'OPEN', dispatchedAt: null },
       include: {
         item: { select: { id: true, name: true, sku: true } },
         warehouse: { select: { id: true, name: true } },
       },
     });
+    const companyId = effectiveCompanyId();
     for (const a of open) {
       this.logger.warn(
         `[ALERT ${a.type}] item=${a.item.name} (${a.item.sku ?? '-'}) ` +
           `warehouse=${a.warehouse?.name ?? 'all'} ` +
           `value=${a.currentValue} threshold=${a.threshold}: ${a.message}`,
       );
-      // TODO: integrate with email / Slack / webhooks here.
+      if (companyId != null) {
+        this.events.emit(EVENTS.ALERT_TRIGGERED, {
+          companyId,
+          alertId: a.id,
+          alertType: a.type,
+          itemId: a.itemId,
+          warehouseId: a.warehouseId,
+          currentValue: a.currentValue,
+          threshold: a.threshold,
+        });
+      }
+      await this.prisma.alert.update({
+        where: { id: a.id },
+        data: { dispatchedAt: new Date() },
+      });
     }
     return { dispatched: open.length };
   }

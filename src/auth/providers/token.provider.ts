@@ -92,8 +92,8 @@ export class TokenProvider {
         user.email,
         roles,
         uniquePermissions,
-        (user as any).userRole ?? 'COMPANY_USER',
-        (user as any).companyId ?? null,
+        user.userRole ?? 'COMPANY_USER',
+        user.companyId ?? null,
       );
 
     response.cookie("refresh_token", new_refresh_token, {

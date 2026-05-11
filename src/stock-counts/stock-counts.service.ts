@@ -6,6 +6,11 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { InventoryCoreService } from '../inventory/inventory-core.service';
+import { TenantQueryService } from '../tenant/tenant-query.service';
+import {
+  tenantCreate,
+  tenantCreateStrict,
+} from '../tenant/tenant-create';
 import {
   CompleteCountDto,
   CreateStockCountDto,
@@ -18,6 +23,7 @@ export class StockCountsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly core: InventoryCoreService,
+    private readonly tenantQuery: TenantQueryService,
   ) {}
 
   async create(dto: CreateStockCountDto, createdBy?: string) {
@@ -42,7 +48,7 @@ export class StockCountsService {
     const expectedMap = new Map(stocks.map((s) => [s.itemId, s.quantity]));
 
     return this.prisma.stockCount.create({
-      data: {
+      data: tenantCreate<Prisma.StockCountUncheckedCreateInput>({
         warehouseId: dto.warehouseId,
         reference: dto.reference ?? `CC-${Date.now()}`,
         notes: dto.notes,
@@ -56,7 +62,7 @@ export class StockCountsService {
             variance: 0,
           })),
         },
-      } as any,
+      }),
       include: { lines: true, warehouse: true },
     });
   }
@@ -127,14 +133,14 @@ export class StockCountsService {
             },
           });
           await tx.stockCountLine.create({
-            data: {
+            data: tenantCreateStrict<Prisma.StockCountLineUncheckedCreateInput>({
               stockCountId: id,
               itemId: line.itemId,
               expectedQty: stock?.quantity ?? 0,
               countedQty: line.countedQty,
               variance: line.countedQty - (stock?.quantity ?? 0),
               notes: line.notes,
-            } as any,
+            }),
           });
         } else {
           await tx.stockCountLine.update({
@@ -184,12 +190,12 @@ export class StockCountsService {
               quantity: line.countedQty,
               version: { increment: 1 },
             },
-            create: {
+            create: tenantCreateStrict<Prisma.InventoryStockUncheckedCreateInput>({
               itemId: line.itemId,
               warehouseId: sc.warehouseId,
               quantity: line.countedQty,
               version: 1,
-            } as any,
+            }),
           });
           if (variance > 0) {
             const item = await tx.item.findUnique({
@@ -211,7 +217,7 @@ export class StockCountsService {
             );
           }
           await tx.stockMovement.create({
-            data: {
+            data: tenantCreateStrict<Prisma.StockMovementUncheckedCreateInput>({
               itemId: line.itemId,
               type: 'ADJUSTMENT',
               quantity: variance,
@@ -220,7 +226,7 @@ export class StockCountsService {
               referenceId: sc.id,
               userId: userId ?? null,
               notes: `Stock count ${sc.reference ?? sc.id}`,
-            } as any,
+            }),
           });
           await this.core.evaluateAlerts(tx, line.itemId, sc.warehouseId);
         }
@@ -256,7 +262,7 @@ export class StockCountsService {
   /** Variance summary across recent counts — recurring discrepancy detection. */
   async varianceSummary(days = 90) {
     const since = new Date(Date.now() - days * 86400000);
-    const rows = await this.prisma.$queryRaw<
+    const rows = await this.tenantQuery.queryRaw<
       {
         itemId: number;
         name: string;
@@ -264,21 +270,25 @@ export class StockCountsService {
         totalVariance: number;
         absVariance: number;
       }[]
-    >`
-      SELECT scl."itemId" AS "itemId",
-             i.name,
-             COUNT(*)::bigint AS "countCount",
-             SUM(scl.variance)::float AS "totalVariance",
-             SUM(ABS(scl.variance))::float AS "absVariance"
-      FROM stock_count_lines scl
-      JOIN stock_counts sc ON sc.id = scl."stockCountId"
-      JOIN items i ON i.id = scl."itemId"
-      WHERE sc."completedAt" IS NOT NULL
-        AND sc."completedAt" >= ${since}
-        AND scl.variance <> 0
-      GROUP BY scl."itemId", i.name
-      ORDER BY "absVariance" DESC
-    `;
+    >(
+      'sc."companyId"',
+      (TENANT) => Prisma.sql`
+        SELECT scl."itemId" AS "itemId",
+               i.name,
+               COUNT(*)::bigint AS "countCount",
+               SUM(scl.variance)::float AS "totalVariance",
+               SUM(ABS(scl.variance))::float AS "absVariance"
+        FROM stock_count_lines scl
+        JOIN stock_counts sc ON sc.id = scl."stockCountId"
+        JOIN items i ON i.id = scl."itemId"
+        WHERE ${TENANT}
+          AND sc."completedAt" IS NOT NULL
+          AND sc."completedAt" >= ${since}
+          AND scl.variance <> 0
+        GROUP BY scl."itemId", i.name
+        ORDER BY "absVariance" DESC
+      `,
+    );
     return rows.map((r) => ({
       itemId: r.itemId,
       name: r.name,

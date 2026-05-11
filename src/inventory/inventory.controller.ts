@@ -13,7 +13,12 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
-import { InventoryService } from './inventory.service';
+import { ItemsService } from './items/items.service';
+import { WarehousesService } from './warehouses/warehouses.service';
+import { SuppliersService } from './suppliers/suppliers.service';
+import { MovementsService } from './movements/movements.service';
+import { PurchasingService } from './purchasing/purchasing.service';
+import { InventoryReportsService } from './reports/inventory-reports.service';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { PermissionGuard } from '../guard/permissions.guard';
 import { Permissions } from '../guard/permissions.decorator';
@@ -40,11 +45,27 @@ import {
   PurchaseFilterDto,
 } from './dto/inventory-filter.dto';
 
+/**
+ * Single inventory controller, deliberately kept as one file even though
+ * the service layer is split. Route paths must stay stable (the frontend
+ * hard-codes them) so combining all routes here is safer than splitting
+ * controllers and risking ordering / collision issues. The route ordering
+ * comments matter: more-specific paths (`reports/*`, `stock/*`, literal
+ * sub-resources) come first; the `items/:id` catch-all is registered last
+ * so it can't shadow any literal segment.
+ */
 @ApiTags('Inventory')
 @Controller('inventory')
 @UseGuards(AuthGuard, PermissionGuard)
 export class InventoryController {
-  constructor(private readonly inventory: InventoryService) {}
+  constructor(
+    private readonly items: ItemsService,
+    private readonly warehouses: WarehousesService,
+    private readonly suppliers: SuppliersService,
+    private readonly movements: MovementsService,
+    private readonly purchasing: PurchasingService,
+    private readonly reports: InventoryReportsService,
+  ) {}
 
   // -------------------- REPORTS (must come before :id routes) --------------------
 
@@ -52,77 +73,77 @@ export class InventoryController {
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'Inventory summary cards' })
   reportSummary() {
-    return this.inventory.reportSummary();
+    return this.reports.summary();
   }
 
   @Get('reports/current-stock')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'Current stock per item across all warehouses' })
   reportCurrentStock() {
-    return this.inventory.reportCurrentStock();
+    return this.reports.currentStock();
   }
 
   @Get('reports/low-stock')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'Items currently below their minStock threshold' })
   reportLowStock() {
-    return this.inventory.reportLowStock();
+    return this.reports.lowStock();
   }
 
   @Get('reports/movements')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'Movement counts grouped by type' })
   reportMovements() {
-    return this.inventory.reportMovementCounts();
+    return this.reports.movementCounts();
   }
 
   @Get('reports/by-warehouse')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'Stock breakdown per warehouse' })
   reportByWarehouse() {
-    return this.inventory.reportByWarehouse();
+    return this.reports.byWarehouse();
   }
 
   @Get('reports/monthly-usage')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'Monthly OUT usage for the last 12 months' })
   reportMonthlyUsage() {
-    return this.inventory.reportMonthlyUsage();
+    return this.reports.monthlyUsage();
   }
 
   @Get('reports/dead-stock')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'Items with no OUT movement in the last N days' })
   reportDeadStock(@Query('days') days?: string) {
-    return this.inventory.reportDeadStock(days ? Number(days) : 90);
+    return this.reports.deadStock(days ? Number(days) : 90);
   }
 
   @Get('reports/sales-velocity')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'Sales velocity & fast/slow movers' })
   reportSalesVelocity(@Query('days') days?: string) {
-    return this.inventory.reportSalesVelocity(days ? Number(days) : 30);
+    return this.reports.salesVelocity(days ? Number(days) : 30);
   }
 
   @Get('reports/turnover')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'Inventory turnover rate (COGS / avg inventory)' })
   reportTurnover(@Query('days') days?: string) {
-    return this.inventory.reportTurnover(days ? Number(days) : 90);
+    return this.reports.turnover(days ? Number(days) : 90);
   }
 
   @Get('reports/profit-per-product')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'Revenue, COGS and profit per product' })
   reportProfitPerProduct(@Query('days') days?: string) {
-    return this.inventory.reportProfitPerProduct(days ? Number(days) : 30);
+    return this.reports.profitPerProduct(days ? Number(days) : 30);
   }
 
   @Get('reports/reorder-suggestions')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'Items that need reordering with suggested quantities' })
   reportReorderSuggestions() {
-    return this.inventory.reportReorderSuggestions();
+    return this.reports.reorderSuggestions();
   }
 
   // -------------------- STOCK OPERATIONS --------------------
@@ -132,7 +153,7 @@ export class InventoryController {
   @ApiOperation({ summary: 'Add stock to a warehouse (IN)' })
   stockIn(@Body() dto: StockInDto, @Req() req: Request) {
     const user = req['user'];
-    return this.inventory.stockIn(
+    return this.movements.stockIn(
       dto,
       user?.sub ? Number(user.sub) : undefined,
     );
@@ -143,7 +164,7 @@ export class InventoryController {
   @ApiOperation({ summary: 'Remove stock from a warehouse (OUT)' })
   stockOut(@Body() dto: StockOutDto, @Req() req: Request) {
     const user = req['user'];
-    return this.inventory.stockOut(
+    return this.movements.stockOut(
       dto,
       user?.sub ? Number(user.sub) : undefined,
     );
@@ -154,7 +175,7 @@ export class InventoryController {
   @ApiOperation({ summary: 'Transfer stock between warehouses' })
   stockTransfer(@Body() dto: StockTransferDto, @Req() req: Request) {
     const user = req['user'];
-    return this.inventory.stockTransfer(
+    return this.movements.stockTransfer(
       dto,
       user?.sub ? Number(user.sub) : undefined,
     );
@@ -165,7 +186,7 @@ export class InventoryController {
   @ApiOperation({ summary: 'Set absolute stock quantity (audit adjustment)' })
   stockAdjustment(@Body() dto: StockAdjustmentDto, @Req() req: Request) {
     const user = req['user'];
-    return this.inventory.stockAdjustment(
+    return this.movements.stockAdjustment(
       dto,
       user?.sub ? Number(user.sub) : undefined,
     );
@@ -175,7 +196,7 @@ export class InventoryController {
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'List stock movements' })
   listMovements(@Query() filters: StockMovementFilterDto) {
-    return this.inventory.findAllMovements(filters);
+    return this.movements.findAll(filters);
   }
 
   // -------------------- WAREHOUSES --------------------
@@ -184,21 +205,21 @@ export class InventoryController {
   @Permissions('inventory.create')
   @ApiOperation({ summary: 'Create a warehouse' })
   createWarehouse(@Body() dto: CreateWarehouseDto) {
-    return this.inventory.createWarehouse(dto);
+    return this.warehouses.create(dto);
   }
 
   @Get('warehouses')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'List warehouses' })
   listWarehouses(@Query() filters: PaginationDto) {
-    return this.inventory.findAllWarehouses(filters);
+    return this.warehouses.findAll(filters);
   }
 
   @Get('warehouses/:id')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'Get a warehouse by id' })
   getWarehouse(@Param('id', ParseIntPipe) id: number) {
-    return this.inventory.findOneWarehouse(id);
+    return this.warehouses.findOne(id);
   }
 
   @Patch('warehouses/:id')
@@ -208,14 +229,14 @@ export class InventoryController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateWarehouseDto,
   ) {
-    return this.inventory.updateWarehouse(id, dto);
+    return this.warehouses.update(id, dto);
   }
 
   @Delete('warehouses/:id')
   @Permissions('inventory.delete')
   @ApiOperation({ summary: 'Delete a warehouse' })
   removeWarehouse(@Param('id', ParseIntPipe) id: number) {
-    return this.inventory.removeWarehouse(id);
+    return this.warehouses.remove(id);
   }
 
   // -------------------- SUPPLIERS --------------------
@@ -224,21 +245,21 @@ export class InventoryController {
   @Permissions('inventory.create')
   @ApiOperation({ summary: 'Create a supplier' })
   createSupplier(@Body() dto: CreateSupplierDto) {
-    return this.inventory.createSupplier(dto);
+    return this.suppliers.create(dto);
   }
 
   @Get('suppliers')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'List suppliers' })
   listSuppliers(@Query() filters: PaginationDto) {
-    return this.inventory.findAllSuppliers(filters);
+    return this.suppliers.findAll(filters);
   }
 
   @Get('suppliers/:id')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'Get a supplier by id' })
   getSupplier(@Param('id', ParseIntPipe) id: number) {
-    return this.inventory.findOneSupplier(id);
+    return this.suppliers.findOne(id);
   }
 
   @Patch('suppliers/:id')
@@ -248,14 +269,14 @@ export class InventoryController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateSupplierDto,
   ) {
-    return this.inventory.updateSupplier(id, dto);
+    return this.suppliers.update(id, dto);
   }
 
   @Delete('suppliers/:id')
   @Permissions('inventory.delete')
   @ApiOperation({ summary: 'Delete a supplier' })
   removeSupplier(@Param('id', ParseIntPipe) id: number) {
-    return this.inventory.removeSupplier(id);
+    return this.suppliers.remove(id);
   }
 
   // -------------------- PURCHASES --------------------
@@ -265,21 +286,24 @@ export class InventoryController {
   @ApiOperation({ summary: 'Create a purchase with line items' })
   createPurchase(@Body() dto: CreatePurchaseDto, @Req() req: Request) {
     const user = req['user'];
-    return this.inventory.createPurchase(dto, user?.sub ? String(user.sub) : undefined);
+    return this.purchasing.create(
+      dto,
+      user?.sub ? String(user.sub) : undefined,
+    );
   }
 
   @Get('purchases')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'List purchases' })
   listPurchases(@Query() filters: PurchaseFilterDto) {
-    return this.inventory.findAllPurchases(filters);
+    return this.purchasing.findAll(filters);
   }
 
   @Get('purchases/:id')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'Get a purchase by id' })
   getPurchase(@Param('id', ParseIntPipe) id: number) {
-    return this.inventory.findOnePurchase(id);
+    return this.purchasing.findOne(id);
   }
 
   @Patch('purchases/:id')
@@ -289,14 +313,14 @@ export class InventoryController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdatePurchaseDto,
   ) {
-    return this.inventory.updatePurchase(id, dto);
+    return this.purchasing.update(id, dto);
   }
 
   @Delete('purchases/:id')
   @Permissions('inventory.delete')
   @ApiOperation({ summary: 'Delete a purchase' })
   removePurchase(@Param('id', ParseIntPipe) id: number) {
-    return this.inventory.removePurchase(id);
+    return this.purchasing.remove(id);
   }
 
   @Post('purchases/:id/receive')
@@ -306,7 +330,7 @@ export class InventoryController {
     @Param('id', ParseIntPipe) id: number,
     @Body() body: { targetWarehouseId: number },
   ) {
-    return this.inventory.receivePurchase(id, body.targetWarehouseId);
+    return this.purchasing.receive(id, body.targetWarehouseId);
   }
 
   // -------------------- SUPPLIER PAYMENTS --------------------
@@ -319,7 +343,7 @@ export class InventoryController {
     @Req() req: Request,
   ) {
     const user = req['user'];
-    return this.inventory.createSupplierPayment(
+    return this.purchasing.createSupplierPayment(
       dto,
       user?.sub ? String(user.sub) : undefined,
     );
@@ -329,14 +353,14 @@ export class InventoryController {
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'List supplier payments' })
   listSupplierPayments(@Query() filters: SupplierPaymentFilterDto) {
-    return this.inventory.findAllSupplierPayments(filters);
+    return this.purchasing.findAllSupplierPayments(filters);
   }
 
   @Delete('supplier-payments/:id')
   @Permissions('inventory.delete')
   @ApiOperation({ summary: 'Delete a supplier payment (reverses its effect)' })
   removeSupplierPayment(@Param('id', ParseIntPipe) id: number) {
-    return this.inventory.removeSupplierPayment(id);
+    return this.purchasing.removeSupplierPayment(id);
   }
 
   // -------------------- ITEMS (must come last to avoid :id shadowing) --------------------
@@ -345,21 +369,21 @@ export class InventoryController {
   @Permissions('inventory.create')
   @ApiOperation({ summary: 'Create an item' })
   createItem(@Body() dto: CreateItemDto) {
-    return this.inventory.createItem(dto);
+    return this.items.create(dto);
   }
 
   @Get('items')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'List items with stock totals' })
   listItems(@Query() filters: ItemFilterDto) {
-    return this.inventory.findAllItems(filters);
+    return this.items.findAll(filters);
   }
 
   @Get('items/:id')
   @Permissions('inventory.read')
   @ApiOperation({ summary: 'Get an item with per-warehouse stock + recent movements' })
   getItem(@Param('id', ParseIntPipe) id: number) {
-    return this.inventory.findOneItem(id);
+    return this.items.findOne(id);
   }
 
   @Patch('items/:id')
@@ -369,13 +393,13 @@ export class InventoryController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateItemDto,
   ) {
-    return this.inventory.updateItem(id, dto);
+    return this.items.update(id, dto);
   }
 
   @Delete('items/:id')
   @Permissions('inventory.delete')
   @ApiOperation({ summary: 'Delete an item' })
   removeItem(@Param('id', ParseIntPipe) id: number) {
-    return this.inventory.removeItem(id);
+    return this.items.remove(id);
   }
 }
