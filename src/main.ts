@@ -32,8 +32,8 @@ async function bootstrap() {
 
   app.setGlobalPrefix("api");
   const config = new DocumentBuilder()
-    .setTitle("Office Archived API")
-    .setDescription("Office Archived API")
+    .setTitle("Zermatoon API")
+    .setDescription("Zermatoon API")
     .setVersion("1.0")
     .build();
   const document = SwaggerModule.createDocument(app, config);
