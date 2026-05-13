@@ -28,7 +28,9 @@ import googleAuthConfig from "./config/google-auth.config";
       useFactory: (configService: ConfigService) => ({
         secret: configService.get("access_token"),
         signOptions: {
-          expiresIn: configService.get<string>("access_token_expires_in"),
+          expiresIn: configService.get<string>(
+            "access_token_expires_in",
+          ) as any,
         },
       }),
     }),
