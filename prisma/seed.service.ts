@@ -39,12 +39,6 @@ export class SeedService {
       { name: 'tender.read', group_name: 'tender', label: 'Read Tender' },
       { name: 'tender.update', group_name: 'tender', label: 'Update Tender' },
       { name: 'tender.delete', group_name: 'tender', label: 'Delete Tender' },
-      // Inventory Management
-      { name: 'inventory.create', group_name: 'inventory', label: 'Create Inventory' },
-      { name: 'inventory.read', group_name: 'inventory', label: 'Read Inventory' },
-      { name: 'inventory.update', group_name: 'inventory', label: 'Update Inventory' },
-      { name: 'inventory.delete', group_name: 'inventory', label: 'Delete Inventory' },
-      { name: 'inventory.movement', group_name: 'inventory', label: 'Perform Stock Movements' },
       // Executive Dashboard
       { name: 'executive.create', group_name: 'executive', label: 'Create Executive KPIs' },
       { name: 'executive.read', group_name: 'executive', label: 'Read Executive Dashboard' },
@@ -123,7 +117,6 @@ export class SeedService {
       'contract.upload', 'contract.read', 'contract.delete',
       'report.view', 'report.export',
       'tender.create', 'tender.read', 'tender.update', 'tender.delete',
-      'inventory.create', 'inventory.read', 'inventory.update', 'inventory.delete', 'inventory.movement',
       'executive.read', 'executive.create', 'executive.update',
       'equipment.create', 'equipment.read', 'equipment.update', 'equipment.assign', 'equipment.maintenance',
       'employee.create', 'employee.read', 'employee.update',
@@ -146,7 +139,7 @@ export class SeedService {
 
     // Viewer → Read-only
     const viewerPerms = [
-      'license.read', 'contract.read', 'report.view', 'tender.read', 'inventory.read',
+      'license.read', 'contract.read', 'report.view', 'tender.read',
       'executive.read', 'equipment.read', 'employee.read', 'department.read',
     ].map((n) => permByName(n)).filter(Boolean);
 

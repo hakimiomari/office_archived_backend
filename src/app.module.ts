@@ -12,7 +12,6 @@ import { ReportsModule } from "./reports/reports.module";
 import { RolesModule } from "./roles/roles.module";
 import { MinioModule } from "./minio/minio.module";
 import { TendersModule } from "./tenders/tenders.module";
-import { InventoryModule } from "./inventory/inventory.module";
 import { ExecutiveModule } from "./executive/executive.module";
 import { EquipmentModule } from "./equipment/equipment.module";
 import { EmployeesModule } from "./employees/employees.module";
@@ -41,7 +40,6 @@ import environmentValidation from "./config/environment.validation";
     ReportsModule,
     RolesModule,
     TendersModule,
-    InventoryModule,
     ExecutiveModule,
     EquipmentModule,
     EmployeesModule,
