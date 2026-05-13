@@ -39,8 +39,6 @@ model User {
   updatedUsers User[] @relation("UserUpdatedBy")
 
   created_roles    Role[] @relation("CreatedRoles")
-  archives_update_by Archives[] @relation("archived_updated_by")
-  archives_created_by Archives[] @relation("archived_created_by")
 
   @@map("users") // This is optional, but if you want to map it to 'users', you can use this
 
@@ -76,33 +74,6 @@ model Permission {
   @@map("permissions")
 }
 
-model Archives {
-  id        Int      @id @default(autoincrement())
-  memo     String
-  title      String
-  register_number String
-  date_exported_or_received      DateTime
-  note      String
-  file_number      Int
-  archive_category  String
-  type      ArchiveType @default(in)
-  created_at     DateTime @default(now())
-  created_by Int
-  updated_at DateTime @updatedAt
-  updated_by Int
-  archived_created_by User? @relation("archived_created_by",fields: [created_by], references: [id], onUpdate: NoAction)
-  archived_updated_by User? @relation("archived_updated_by",fields: [updated_by], references: [id], onUpdate: NoAction)
-
- @@index([created_by, title, register_number, date_exported_or_received])
- @@map("archives")
-
-}
-
-enum ArchiveType {
-  in
-  out
-}
-
 enum LicenseType {
   SMALL
   LARGE
@@ -114,9 +85,13 @@ enum LicenseStatus {
   SUSPENDED
 }
 
+model Material{
+  id            String      @id @default(ulid())
+  name          String
+}
+
 model License {
   id            String        @id @default(uuid())
-  licenseNumber String
   companyName   String
   licenseType   LicenseType
   issueDate     DateTime
@@ -130,18 +105,39 @@ model License {
 
   contracts     Contract[]
 
+  created_by    Int?
+  deleted_by    Int? 
+  
   @@map("licenses")
+}
+
+model Owner {
+  id            String      @id @default(uuid())
+  name          String
+  shareAmount   String
+  companyId     String?
+  company       Company? @relation(fields: [companyId], references: [id])
+
+  @@map("owners")
+}
+
+model Company{
+  id            String        @id @default(uuid())
+  licenseNumber String
+  TIN           String
+  address       String
+  owners        Owner[]
+  contracts     Contract[]
+
+  @@map("companies")
 }
 
 model Contract {
   id         String   @id @default(uuid())
   licenseId  String
-  fileName   String
-  fileUrl    String
-  fileType   String
-  uploadedBy String
-  uploadedAt DateTime @default(now())
+  companyId   String
 
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   license License @relation(fields: [licenseId], references: [id], onDelete: Cascade)
 
   @@map("contracts")

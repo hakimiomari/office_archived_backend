@@ -5,7 +5,6 @@ import { AuthModule } from "./auth/auth.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { RedisModule } from "./redis/redis.module";
 import { UserModule } from "./users/users.module";
-import { ArchivesModule } from "./archives/archives.module";
 import { LicensesModule } from "./licenses/licenses.module";
 import { ContractsModule } from "./contracts/contracts.module";
 import { ReportsModule } from "./reports/reports.module";
@@ -34,7 +33,6 @@ import environmentValidation from "./config/environment.validation";
     RedisModule,
     MinioModule,
     UserModule,
-    ArchivesModule,
     LicensesModule,
     ContractsModule,
     ReportsModule,
