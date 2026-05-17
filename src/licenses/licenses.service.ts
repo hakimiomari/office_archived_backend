@@ -26,9 +26,8 @@ export class LicensesService {
     const where = search
       ? {
           OR: [
-            { licenseNumber: { contains: search, mode: 'insensitive' as const } },
-            { companyName: { contains: search, mode: 'insensitive' as const } },
             { province: { contains: search, mode: 'insensitive' as const } },
+            { district: { contains: search, mode: 'insensitive' as const } },
           ],
         }
       : {};

@@ -26,10 +26,6 @@ export class ReportsService {
       where.status = filters.status;
     }
 
-    if (filters.companyName) {
-      where.companyName = { contains: filters.companyName, mode: 'insensitive' };
-    }
-
     if (filters.province) {
       where.province = { contains: filters.province, mode: 'insensitive' };
     }
@@ -208,8 +204,8 @@ export class ReportsService {
       doc.moveDown(2);
 
       // Table header
-      const headers = ['#', 'License No.', 'Company', 'Type', 'Status', 'Province', 'Issue Date', 'Expiry Date'];
-      const colWidths = [30, 100, 130, 60, 70, 80, 90, 90];
+      const headers = ['#', 'License ID', 'Type', 'Status', 'Province', 'District', 'Issue Date', 'Expiry Date'];
+      const colWidths = [30, 210, 70, 70, 80, 80, 80, 80];
       let x = 30;
       const headerY = doc.y;
 
@@ -233,11 +229,11 @@ export class ReportsService {
         const y = doc.y;
         const rowData = [
           String(index + 1),
-          lic.licenseNumber,
-          lic.companyName,
+          lic.id,
           lic.licenseType,
           lic.status,
           lic.province,
+          lic.district,
           new Date(lic.issueDate).toISOString().split('T')[0],
           new Date(lic.expiryDate).toISOString().split('T')[0],
         ];
@@ -264,8 +260,7 @@ export class ReportsService {
   }> {
     const rows = licenses.map((lic, i) => ({
       '#': i + 1,
-      'License Number': lic.licenseNumber,
-      'Company Name': lic.companyName,
+      'License ID': lic.id,
       'License Type': lic.licenseType,
       Status: lic.status,
       Province: lic.province,
@@ -294,8 +289,7 @@ export class ReportsService {
     fileName: string;
   }> {
     const headers = [
-      'License Number',
-      'Company Name',
+      'License ID',
       'License Type',
       'Status',
       'Province',
@@ -306,8 +300,7 @@ export class ReportsService {
 
     const rows = licenses.map((lic) =>
       [
-        lic.licenseNumber,
-        `"${lic.companyName}"`,
+        lic.id,
         lic.licenseType,
         lic.status,
         lic.province,

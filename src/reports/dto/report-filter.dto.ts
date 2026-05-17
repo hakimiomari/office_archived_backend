@@ -26,11 +26,6 @@ export class ReportFilterDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  companyName?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
   province?: string;
 
   @ApiPropertyOptional({ example: '1' })

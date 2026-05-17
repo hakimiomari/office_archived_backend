@@ -18,8 +18,9 @@ export class SeedService {
       { name: 'license.update', group_name: 'license', label: 'Update License' },
       { name: 'license.delete', group_name: 'license', label: 'Delete License' },
       // Contract
-      { name: 'contract.upload', group_name: 'contract', label: 'Upload Contract' },
+      { name: 'contract.create', group_name: 'contract', label: 'Create Contract' },
       { name: 'contract.read', group_name: 'contract', label: 'Read Contract' },
+      { name: 'contract.update', group_name: 'contract', label: 'Update Contract' },
       { name: 'contract.delete', group_name: 'contract', label: 'Delete Contract' },
       // Report
       { name: 'report.view', group_name: 'report', label: 'View Reports' },
@@ -114,7 +115,7 @@ export class SeedService {
     // Manager → Manage licenses, upload contracts, view reports, no user mgmt
     const managerPerms = [
       'license.create', 'license.read', 'license.update', 'license.delete',
-      'contract.upload', 'contract.read', 'contract.delete',
+      'contract.create', 'contract.read', 'contract.update', 'contract.delete',
       'report.view', 'report.export',
       'tender.create', 'tender.read', 'tender.update', 'tender.delete',
       'executive.read', 'executive.create', 'executive.update',
@@ -160,7 +161,7 @@ export class SeedService {
     // Data Entry → Create licenses, no delete, no reports
     const dataEntryPerms = [
       'license.create', 'license.read', 'license.update',
-      'contract.upload', 'contract.read',
+      'contract.create', 'contract.read', 'contract.update',
     ].map((n) => permByName(n)).filter(Boolean);
 
     await this.prismaService.role.upsert({

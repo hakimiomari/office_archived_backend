@@ -75,14 +75,26 @@ model Permission {
 }
 
 enum LicenseType {
-  SMALL
-  LARGE
+  TRADE
+  IMPORT
+  EXPORT
+  INDUSTRIAL
+  PROFESSIONAL
 }
 
 enum LicenseStatus {
   ACTIVE
   EXPIRED
+  PENDING
   SUSPENDED
+  CANCELLED
+}
+
+enum ContractStatus {
+  ACTIVE
+  EXPIRED
+  TERMINATED
+  PENDING
 }
 
 model Material{
@@ -90,58 +102,93 @@ model Material{
   name          String
 }
 
-model License {
-  id            String        @id @default(uuid())
-  companyName   String
-  licenseType   LicenseType
-  issueDate     DateTime
-  expiryDate    DateTime
-  status        LicenseStatus
-  province      String
-  district      String
-  createdBy     String
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+model Company {
+  id              String      @id @default(uuid())
 
-  contracts     Contract[]
+  licenseNumber   String
+  TIN             String
+  address         String
 
-  created_by    Int?
-  deleted_by    Int? 
-  
-  @@map("licenses")
-}
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
-model Owner {
-  id            String      @id @default(uuid())
-  name          String
-  shareAmount   String
-  companyId     String?
-  company       Company? @relation(fields: [companyId], references: [id])
-
-  @@map("owners")
-}
-
-model Company{
-  id            String        @id @default(uuid())
-  licenseNumber String
-  TIN           String
-  address       String
-  owners        Owner[]
-  contracts     Contract[]
+  owners          Owner[]
+  contracts       Contract[]
 
   @@map("companies")
 }
 
-model Contract {
-  id         String   @id @default(uuid())
-  licenseId  String
-  companyId   String
+model Owner {
+  id              String      @id @default(uuid())
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  license License @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  name            String
+  shareAmount     Decimal     @db.Decimal(10, 2)
+
+  companyId       String
+  company         Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@map("owners")
+}
+
+model License {
+  id              String          @id @default(uuid())
+
+  licenseType     LicenseType
+  status          LicenseStatus
+
+  issueDate       DateTime
+  expiryDate      DateTime
+
+  province        String
+  district        String
+
+  createdBy       String
+
+  created_by      Int?
+  deleted_by      Int?
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  contracts       Contract[]
+
+  @@map("licenses")
+}
+
+model Contract {
+  id              String          @id @default(uuid())
+
+  companyId       String
+  licenseId       String
+
+  contractType    ContractType
+  status          ContractStatus
+
+  contractNumber  String?
+
+  startDate       DateTime?
+  endDate         DateTime?
+
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  license         License         @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([companyId, licenseId])
 
   @@map("contracts")
 }
+
+
+enum ContractType {
+  SMALL_SCALE
+  LARGE_SCALE
+}
+
 
 enum TenderType {
   TENDER
