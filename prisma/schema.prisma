@@ -529,3 +529,10 @@ model Employee {
   @@index([firstName, lastName])
   @@map("employees")
 }
+
+model Province{
+  id             Int                @id @default(autoincrement())
+  name String? @unique
+
+  @@map("provinces")
+}
