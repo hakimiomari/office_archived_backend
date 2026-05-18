@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../src/prisma/prisma.service';
-import { HashingProvider } from '../src/auth/providers/hashing.provider';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../src/prisma/prisma.service";
+import { HashingProvider } from "../src/auth/providers/hashing.provider";
 
 @Injectable()
 export class SeedService {
@@ -13,64 +13,168 @@ export class SeedService {
     // ─── 1. PERMISSIONS (module.action format) ───
     const permissions = [
       // License
-      { name: 'license.create', group_name: 'license', label: 'Create License' },
-      { name: 'license.read', group_name: 'license', label: 'Read License' },
-      { name: 'license.update', group_name: 'license', label: 'Update License' },
-      { name: 'license.delete', group_name: 'license', label: 'Delete License' },
+      {
+        name: "license.create",
+        group_name: "license",
+        label: "Create License",
+      },
+      { name: "license.read", group_name: "license", label: "Read License" },
+      {
+        name: "license.update",
+        group_name: "license",
+        label: "Update License",
+      },
+      {
+        name: "license.delete",
+        group_name: "license",
+        label: "Delete License",
+      },
       // Contract
-      { name: 'contract.create', group_name: 'contract', label: 'Create Contract' },
-      { name: 'contract.read', group_name: 'contract', label: 'Read Contract' },
-      { name: 'contract.update', group_name: 'contract', label: 'Update Contract' },
-      { name: 'contract.delete', group_name: 'contract', label: 'Delete Contract' },
+      {
+        name: "contract.create",
+        group_name: "contract",
+        label: "Create Contract",
+      },
+      { name: "contract.read", group_name: "contract", label: "Read Contract" },
+      {
+        name: "contract.update",
+        group_name: "contract",
+        label: "Update Contract",
+      },
+      {
+        name: "contract.delete",
+        group_name: "contract",
+        label: "Delete Contract",
+      },
       // Company
-      { name: 'company.create', group_name: 'company', label: 'Create Company' },
-      { name: 'company.read', group_name: 'company', label: 'Read Company' },
-      { name: 'company.update', group_name: 'company', label: 'Update Company' },
-      { name: 'company.delete', group_name: 'company', label: 'Delete Company' },
+      {
+        name: "company.create",
+        group_name: "company",
+        label: "Create Company",
+      },
+      { name: "company.read", group_name: "company", label: "Read Company" },
+      {
+        name: "company.update",
+        group_name: "company",
+        label: "Update Company",
+      },
+      {
+        name: "company.delete",
+        group_name: "company",
+        label: "Delete Company",
+      },
       // Owner
-      { name: 'owner.create', group_name: 'owner', label: 'Create Owner' },
-      { name: 'owner.read', group_name: 'owner', label: 'Read Owner' },
-      { name: 'owner.update', group_name: 'owner', label: 'Update Owner' },
-      { name: 'owner.delete', group_name: 'owner', label: 'Delete Owner' },
+      { name: "owner.create", group_name: "owner", label: "Create Owner" },
+      { name: "owner.read", group_name: "owner", label: "Read Owner" },
+      { name: "owner.update", group_name: "owner", label: "Update Owner" },
+      { name: "owner.delete", group_name: "owner", label: "Delete Owner" },
       // Report
-      { name: 'report.view', group_name: 'report', label: 'View Reports' },
-      { name: 'report.export', group_name: 'report', label: 'Export Reports' },
+      { name: "report.view", group_name: "report", label: "View Reports" },
+      { name: "report.export", group_name: "report", label: "Export Reports" },
       // User Management
-      { name: 'user.create', group_name: 'user', label: 'Create User' },
-      { name: 'user.read', group_name: 'user', label: 'Read User' },
-      { name: 'user.update', group_name: 'user', label: 'Update User' },
-      { name: 'user.delete', group_name: 'user', label: 'Delete User' },
+      { name: "user.create", group_name: "user", label: "Create User" },
+      { name: "user.read", group_name: "user", label: "Read User" },
+      { name: "user.update", group_name: "user", label: "Update User" },
+      { name: "user.delete", group_name: "user", label: "Delete User" },
       // Role Management
-      { name: 'role.create', group_name: 'role', label: 'Create Role' },
-      { name: 'role.read', group_name: 'role', label: 'Read Role' },
-      { name: 'role.update', group_name: 'role', label: 'Update Role' },
-      { name: 'role.delete', group_name: 'role', label: 'Delete Role' },
+      { name: "role.create", group_name: "role", label: "Create Role" },
+      { name: "role.read", group_name: "role", label: "Read Role" },
+      { name: "role.update", group_name: "role", label: "Update Role" },
+      { name: "role.delete", group_name: "role", label: "Delete Role" },
       // Tender Management
-      { name: 'tender.create', group_name: 'tender', label: 'Create Tender' },
-      { name: 'tender.read', group_name: 'tender', label: 'Read Tender' },
-      { name: 'tender.update', group_name: 'tender', label: 'Update Tender' },
-      { name: 'tender.delete', group_name: 'tender', label: 'Delete Tender' },
+      { name: "tender.create", group_name: "tender", label: "Create Tender" },
+      { name: "tender.read", group_name: "tender", label: "Read Tender" },
+      { name: "tender.update", group_name: "tender", label: "Update Tender" },
+      { name: "tender.delete", group_name: "tender", label: "Delete Tender" },
       // Executive Dashboard
-      { name: 'executive.create', group_name: 'executive', label: 'Create Executive KPIs' },
-      { name: 'executive.read', group_name: 'executive', label: 'Read Executive Dashboard' },
-      { name: 'executive.update', group_name: 'executive', label: 'Update Executive KPIs' },
-      { name: 'executive.delete', group_name: 'executive', label: 'Delete Executive KPIs' },
+      {
+        name: "executive.create",
+        group_name: "executive",
+        label: "Create Executive KPIs",
+      },
+      {
+        name: "executive.read",
+        group_name: "executive",
+        label: "Read Executive Dashboard",
+      },
+      {
+        name: "executive.update",
+        group_name: "executive",
+        label: "Update Executive KPIs",
+      },
+      {
+        name: "executive.delete",
+        group_name: "executive",
+        label: "Delete Executive KPIs",
+      },
       // Equipment Management
-      { name: 'equipment.create', group_name: 'equipment', label: 'Create Equipment' },
-      { name: 'equipment.read', group_name: 'equipment', label: 'Read Equipment' },
-      { name: 'equipment.update', group_name: 'equipment', label: 'Update Equipment' },
-      { name: 'equipment.delete', group_name: 'equipment', label: 'Delete Equipment' },
-      { name: 'equipment.assign', group_name: 'equipment', label: 'Assign Equipment' },
-      { name: 'equipment.maintenance', group_name: 'equipment', label: 'Manage Equipment Maintenance' },
+      {
+        name: "equipment.create",
+        group_name: "equipment",
+        label: "Create Equipment",
+      },
+      {
+        name: "equipment.read",
+        group_name: "equipment",
+        label: "Read Equipment",
+      },
+      {
+        name: "equipment.update",
+        group_name: "equipment",
+        label: "Update Equipment",
+      },
+      {
+        name: "equipment.delete",
+        group_name: "equipment",
+        label: "Delete Equipment",
+      },
+      {
+        name: "equipment.assign",
+        group_name: "equipment",
+        label: "Assign Equipment",
+      },
+      {
+        name: "equipment.maintenance",
+        group_name: "equipment",
+        label: "Manage Equipment Maintenance",
+      },
       // Employee / HR Management
-      { name: 'employee.create', group_name: 'employee', label: 'Create Employee' },
-      { name: 'employee.read', group_name: 'employee', label: 'Read Employee' },
-      { name: 'employee.update', group_name: 'employee', label: 'Update Employee' },
-      { name: 'employee.delete', group_name: 'employee', label: 'Delete Employee' },
-      { name: 'department.create', group_name: 'employee', label: 'Create Department' },
-      { name: 'department.read', group_name: 'employee', label: 'Read Department' },
-      { name: 'department.update', group_name: 'employee', label: 'Update Department' },
-      { name: 'department.delete', group_name: 'employee', label: 'Delete Department' },
+      {
+        name: "employee.create",
+        group_name: "employee",
+        label: "Create Employee",
+      },
+      { name: "employee.read", group_name: "employee", label: "Read Employee" },
+      {
+        name: "employee.update",
+        group_name: "employee",
+        label: "Update Employee",
+      },
+      {
+        name: "employee.delete",
+        group_name: "employee",
+        label: "Delete Employee",
+      },
+      {
+        name: "department.create",
+        group_name: "employee",
+        label: "Create Department",
+      },
+      {
+        name: "department.read",
+        group_name: "employee",
+        label: "Read Department",
+      },
+      {
+        name: "department.update",
+        group_name: "employee",
+        label: "Update Department",
+      },
+      {
+        name: "department.delete",
+        group_name: "employee",
+        label: "Delete Department",
+      },
     ];
 
     for (const perm of permissions) {
@@ -84,39 +188,40 @@ export class SeedService {
         },
       });
     }
-    console.log('✅ Permissions seeded');
+    console.log("✅ Permissions seeded");
 
     // ─── 2. CREATE ADMIN USER ───
-    const password = 'admin';
+    const password = "admin";
     const hashPassword = await this.hashingProvider.hashPassword(password);
 
     const adminUser = await this.prismaService.user.upsert({
-      where: { email: 'hakimikamranullah@gmail.com' },
+      where: { email: "hakimikamranullah@gmail.com" },
       update: {},
       create: {
-        name: 'Kamranullah Hakimi',
-        email: 'hakimikamranullah@gmail.com',
+        name: "Kamranullah Hakimi",
+        email: "hakimikamranullah@gmail.com",
         password: hashPassword,
         profile_picture:
-          'https://avatars.githubusercontent.com/u/101364769?v=4',
+          "https://avatars.githubusercontent.com/u/101364769?v=4",
       },
     });
-    console.log('✅ Admin user seeded');
+    console.log("✅ Admin user seeded");
 
     // ─── 3. ROLES ───
     const allPermissions = await this.prismaService.permission.findMany();
-    const permByName = (name: string) => allPermissions.find((p) => p.name === name);
+    const permByName = (name: string) =>
+      allPermissions.find((p) => p.name === name);
 
     // Admin → Full access
     await this.prismaService.role.upsert({
-      where: { name: 'admin' },
+      where: { name: "admin" },
       update: {
-        description: 'Full system access',
+        description: "Full system access",
         permissions: { set: allPermissions.map((p) => ({ id: p.id })) },
       },
       create: {
-        name: 'admin',
-        description: 'Full system access',
+        name: "admin",
+        description: "Full system access",
         created_by: adminUser.id,
         permissions: { connect: allPermissions.map((p) => ({ id: p.id })) },
       },
@@ -124,27 +229,55 @@ export class SeedService {
 
     // Manager → Manage licenses, upload contracts, view reports, no user mgmt
     const managerPerms = [
-      'license.create', 'license.read', 'license.update', 'license.delete',
-      'contract.create', 'contract.read', 'contract.update', 'contract.delete',
-      'company.create', 'company.read', 'company.update', 'company.delete',
-      'owner.create', 'owner.read', 'owner.update', 'owner.delete',
-      'report.view', 'report.export',
-      'tender.create', 'tender.read', 'tender.update', 'tender.delete',
-      'executive.read', 'executive.create', 'executive.update',
-      'equipment.create', 'equipment.read', 'equipment.update', 'equipment.assign', 'equipment.maintenance',
-      'employee.create', 'employee.read', 'employee.update',
-      'department.create', 'department.read', 'department.update',
-    ].map((n) => permByName(n)).filter(Boolean);
+      "license.create",
+      "license.read",
+      "license.update",
+      "license.delete",
+      "contract.create",
+      "contract.read",
+      "contract.update",
+      "contract.delete",
+      "company.create",
+      "company.read",
+      "company.update",
+      "company.delete",
+      "owner.create",
+      "owner.read",
+      "owner.update",
+      "owner.delete",
+      "report.view",
+      "report.export",
+      "tender.create",
+      "tender.read",
+      "tender.update",
+      "tender.delete",
+      "executive.read",
+      "executive.create",
+      "executive.update",
+      "equipment.create",
+      "equipment.read",
+      "equipment.update",
+      "equipment.assign",
+      "equipment.maintenance",
+      "employee.create",
+      "employee.read",
+      "employee.update",
+      "department.create",
+      "department.read",
+      "department.update",
+    ]
+      .map((n) => permByName(n))
+      .filter(Boolean);
 
     await this.prismaService.role.upsert({
-      where: { name: 'manager' },
+      where: { name: "manager" },
       update: {
-        description: 'Manage licenses, contracts, and reports',
+        description: "Manage licenses, contracts, and reports",
         permissions: { set: managerPerms.map((p) => ({ id: p!.id })) },
       },
       create: {
-        name: 'manager',
-        description: 'Manage licenses, contracts, and reports',
+        name: "manager",
+        description: "Manage licenses, contracts, and reports",
         created_by: adminUser.id,
         permissions: { connect: managerPerms.map((p) => ({ id: p!.id })) },
       },
@@ -152,19 +285,29 @@ export class SeedService {
 
     // Viewer → Read-only
     const viewerPerms = [
-      'license.read', 'contract.read', 'company.read', 'owner.read', 'report.view', 'tender.read',
-      'executive.read', 'equipment.read', 'employee.read', 'department.read',
-    ].map((n) => permByName(n)).filter(Boolean);
+      "license.read",
+      "contract.read",
+      "company.read",
+      "owner.read",
+      "report.view",
+      "tender.read",
+      "executive.read",
+      "equipment.read",
+      "employee.read",
+      "department.read",
+    ]
+      .map((n) => permByName(n))
+      .filter(Boolean);
 
     await this.prismaService.role.upsert({
-      where: { name: 'viewer' },
+      where: { name: "viewer" },
       update: {
-        description: 'Read-only access to licenses and reports',
+        description: "Read-only access to licenses and reports",
         permissions: { set: viewerPerms.map((p) => ({ id: p!.id })) },
       },
       create: {
-        name: 'viewer',
-        description: 'Read-only access to licenses and reports',
+        name: "viewer",
+        description: "Read-only access to licenses and reports",
         created_by: adminUser.id,
         permissions: { connect: viewerPerms.map((p) => ({ id: p!.id })) },
       },
@@ -172,31 +315,42 @@ export class SeedService {
 
     // Data Entry → Create licenses, no delete, no reports
     const dataEntryPerms = [
-      'license.create', 'license.read', 'license.update',
-      'contract.create', 'contract.read', 'contract.update',
-      'company.create', 'company.read', 'company.update',
-      'owner.create', 'owner.read', 'owner.update', 'owner.delete',
-    ].map((n) => permByName(n)).filter(Boolean);
+      "license.create",
+      "license.read",
+      "license.update",
+      "contract.create",
+      "contract.read",
+      "contract.update",
+      "company.create",
+      "company.read",
+      "company.update",
+      "owner.create",
+      "owner.read",
+      "owner.update",
+      "owner.delete",
+    ]
+      .map((n) => permByName(n))
+      .filter(Boolean);
 
     await this.prismaService.role.upsert({
-      where: { name: 'data_entry' },
+      where: { name: "data_entry" },
       update: {
-        description: 'Create and update licenses, no delete or report access',
+        description: "Create and update licenses, no delete or report access",
         permissions: { set: dataEntryPerms.map((p) => ({ id: p!.id })) },
       },
       create: {
-        name: 'data_entry',
-        description: 'Create and update licenses, no delete or report access',
+        name: "data_entry",
+        description: "Create and update licenses, no delete or report access",
         created_by: adminUser.id,
         permissions: { connect: dataEntryPerms.map((p) => ({ id: p!.id })) },
       },
     });
 
-    console.log('✅ Roles seeded (admin, manager, viewer, data_entry)');
+    console.log("✅ Roles seeded (admin, manager, viewer, data_entry)");
 
     // ─── 4. ASSIGN ADMIN ROLE TO ADMIN USER ───
     const adminRole = await this.prismaService.role.findUnique({
-      where: { name: 'admin' },
+      where: { name: "admin" },
     });
     if (adminRole) {
       await this.prismaService.user.update({
@@ -205,7 +359,7 @@ export class SeedService {
       });
     }
 
-    console.log('✅ Admin user assigned admin role');
+    console.log("✅ Admin user assigned admin role");
 
     // ─── 5. EXECUTIVE DASHBOARD SAMPLE DATA ───
     await this.seedExecutiveData(adminUser.id);
@@ -219,23 +373,101 @@ export class SeedService {
     // ─── KPIs ───
     const kpis = [
       // Prior year - 2
-      { key: 'totalRevenue', year: years[0], value: 8500000, category: 'FINANCIAL', label: 'Total Revenue' },
-      { key: 'totalExpenses', year: years[0], value: 6200000, category: 'FINANCIAL', label: 'Total Expenses' },
-      { key: 'royaltyIncome', year: years[0], value: 2100000, category: 'FINANCIAL', label: 'Royalty Income' },
-      { key: 'activeProjects', year: years[0], value: 18, category: 'OPERATIONAL', label: 'Active Projects' },
+      {
+        key: "totalRevenue",
+        year: years[0],
+        value: 8500000,
+        category: "FINANCIAL",
+        label: "Total Revenue",
+      },
+      {
+        key: "totalExpenses",
+        year: years[0],
+        value: 6200000,
+        category: "FINANCIAL",
+        label: "Total Expenses",
+      },
+      {
+        key: "royaltyIncome",
+        year: years[0],
+        value: 2100000,
+        category: "FINANCIAL",
+        label: "Royalty Income",
+      },
+      {
+        key: "activeProjects",
+        year: years[0],
+        value: 18,
+        category: "OPERATIONAL",
+        label: "Active Projects",
+      },
 
       // Prior year - 1
-      { key: 'totalRevenue', year: years[1], value: 11200000, category: 'FINANCIAL', label: 'Total Revenue' },
-      { key: 'totalExpenses', year: years[1], value: 7800000, category: 'FINANCIAL', label: 'Total Expenses' },
-      { key: 'royaltyIncome', year: years[1], value: 3050000, category: 'FINANCIAL', label: 'Royalty Income' },
-      { key: 'activeProjects', year: years[1], value: 22, category: 'OPERATIONAL', label: 'Active Projects' },
+      {
+        key: "totalRevenue",
+        year: years[1],
+        value: 11200000,
+        category: "FINANCIAL",
+        label: "Total Revenue",
+      },
+      {
+        key: "totalExpenses",
+        year: years[1],
+        value: 7800000,
+        category: "FINANCIAL",
+        label: "Total Expenses",
+      },
+      {
+        key: "royaltyIncome",
+        year: years[1],
+        value: 3050000,
+        category: "FINANCIAL",
+        label: "Royalty Income",
+      },
+      {
+        key: "activeProjects",
+        year: years[1],
+        value: 22,
+        category: "OPERATIONAL",
+        label: "Active Projects",
+      },
 
       // Current year
-      { key: 'totalRevenue', year: years[2], value: 13750000, category: 'FINANCIAL', label: 'Total Revenue' },
-      { key: 'totalExpenses', year: years[2], value: 9250000, category: 'FINANCIAL', label: 'Total Expenses' },
-      { key: 'royaltyIncome', year: years[2], value: 4120000, category: 'FINANCIAL', label: 'Royalty Income' },
-      { key: 'activeProjects', year: years[2], value: 27, category: 'OPERATIONAL', label: 'Active Projects' },
-      { key: 'exportValue', year: years[2], value: 5600000, category: 'FINANCIAL', label: 'Mineral Export Value' },
+      {
+        key: "totalRevenue",
+        year: years[2],
+        value: 13750000,
+        category: "FINANCIAL",
+        label: "Total Revenue",
+      },
+      {
+        key: "totalExpenses",
+        year: years[2],
+        value: 9250000,
+        category: "FINANCIAL",
+        label: "Total Expenses",
+      },
+      {
+        key: "royaltyIncome",
+        year: years[2],
+        value: 4120000,
+        category: "FINANCIAL",
+        label: "Royalty Income",
+      },
+      {
+        key: "activeProjects",
+        year: years[2],
+        value: 27,
+        category: "OPERATIONAL",
+        label: "Active Projects",
+      },
+      {
+        key: "exportValue",
+        year: years[2],
+        value: 5600000,
+        category: "FINANCIAL",
+        label: "Mineral Export Value",
+      },
     ];
 
     const adminIdStr = String(adminUserId);
@@ -269,7 +501,7 @@ export class SeedService {
         activeContracts: 28,
         suspendedContracts: 8,
         cancelledContracts: 6,
-        notes: 'Initial baseline year — several legacy contracts wound down.',
+        notes: "Initial baseline year — several legacy contracts wound down.",
       },
       {
         year: years[1],
@@ -277,7 +509,7 @@ export class SeedService {
         activeContracts: 41,
         suspendedContracts: 10,
         cancelledContracts: 7,
-        notes: 'Growth year following investment reforms.',
+        notes: "Growth year following investment reforms.",
       },
       {
         year: years[2],
@@ -285,7 +517,7 @@ export class SeedService {
         activeContracts: 54,
         suspendedContracts: 12,
         cancelledContracts: 8,
-        notes: 'Record-high active contracts due to renewed licenses.',
+        notes: "Record-high active contracts due to renewed licenses.",
       },
     ];
 
@@ -316,81 +548,85 @@ export class SeedService {
       const thisYear = years[2];
       const travels = [
         {
-          type: 'DOMESTIC' as const,
-          destination: 'Herat — Mining sites inspection',
-          purpose: 'Quarterly inspection of active mining operations in western provinces.',
+          type: "DOMESTIC" as const,
+          destination: "Herat — Mining sites inspection",
+          purpose:
+            "Quarterly inspection of active mining operations in western provinces.",
           startDate: new Date(`${thisYear}-01-12`),
           endDate: new Date(`${thisYear}-01-15`),
           cost: 12500,
         },
         {
-          type: 'INTERNATIONAL' as const,
-          destination: 'Dubai, UAE — Investment conference',
-          purpose: 'Attend the Afghanistan mining investment conference and bilateral meetings.',
+          type: "INTERNATIONAL" as const,
+          destination: "Dubai, UAE — Investment conference",
+          purpose:
+            "Attend the Afghanistan mining investment conference and bilateral meetings.",
           startDate: new Date(`${thisYear}-02-03`),
           endDate: new Date(`${thisYear}-02-07`),
           cost: 48750,
         },
         {
-          type: 'DOMESTIC' as const,
-          destination: 'Kandahar — Coal mine site visit',
-          purpose: 'Review production status and community engagement programs.',
+          type: "DOMESTIC" as const,
+          destination: "Kandahar — Coal mine site visit",
+          purpose:
+            "Review production status and community engagement programs.",
           startDate: new Date(`${thisYear}-03-18`),
           endDate: new Date(`${thisYear}-03-20`),
           cost: 9800,
         },
         {
-          type: 'INTERNATIONAL' as const,
-          destination: 'Ashgabat, Turkmenistan — TAPI pipeline meeting',
-          purpose: 'TAPI gas pipeline progress review with regional partners.',
+          type: "INTERNATIONAL" as const,
+          destination: "Ashgabat, Turkmenistan — TAPI pipeline meeting",
+          purpose: "TAPI gas pipeline progress review with regional partners.",
           startDate: new Date(`${thisYear}-04-05`),
           endDate: new Date(`${thisYear}-04-09`),
           cost: 62300,
         },
         {
-          type: 'DOMESTIC' as const,
-          destination: 'Badakhshan — Emerald mine inspection',
-          purpose: 'Audit of the Panjshir emerald extraction operations.',
+          type: "DOMESTIC" as const,
+          destination: "Badakhshan — Emerald mine inspection",
+          purpose: "Audit of the Panjshir emerald extraction operations.",
           startDate: new Date(`${thisYear}-05-22`),
           endDate: new Date(`${thisYear}-05-26`),
           cost: 15400,
         },
         {
-          type: 'INTERNATIONAL' as const,
-          destination: 'Toronto, Canada — PDAC conference',
-          purpose: 'Prospectors and Developers Association of Canada annual conference.',
+          type: "INTERNATIONAL" as const,
+          destination: "Toronto, Canada — PDAC conference",
+          purpose:
+            "Prospectors and Developers Association of Canada annual conference.",
           startDate: new Date(`${thisYear}-06-02`),
           endDate: new Date(`${thisYear}-06-09`),
           cost: 95200,
         },
         {
-          type: 'DOMESTIC' as const,
-          destination: 'Nangarhar — Talc mine licensing',
-          purpose: 'Site inspection for new small-scale talc mining licenses.',
+          type: "DOMESTIC" as const,
+          destination: "Nangarhar — Talc mine licensing",
+          purpose: "Site inspection for new small-scale talc mining licenses.",
           startDate: new Date(`${thisYear}-07-14`),
           endDate: new Date(`${thisYear}-07-15`),
           cost: 6200,
         },
         {
-          type: 'INTERNATIONAL' as const,
-          destination: 'Tehran, Iran — Bilateral mining agreement',
-          purpose: 'Negotiate cross-border mining cooperation framework.',
+          type: "INTERNATIONAL" as const,
+          destination: "Tehran, Iran — Bilateral mining agreement",
+          purpose: "Negotiate cross-border mining cooperation framework.",
           startDate: new Date(`${thisYear}-08-11`),
           endDate: new Date(`${thisYear}-08-14`),
           cost: 31500,
         },
         {
-          type: 'DOMESTIC' as const,
-          destination: 'Balkh — Cement plant opening',
-          purpose: 'Official inauguration of new cement production facility.',
+          type: "DOMESTIC" as const,
+          destination: "Balkh — Cement plant opening",
+          purpose: "Official inauguration of new cement production facility.",
           startDate: new Date(`${thisYear}-09-08`),
           endDate: new Date(`${thisYear}-09-09`),
           cost: 7800,
         },
         {
-          type: 'INTERNATIONAL' as const,
-          destination: 'Doha, Qatar — Energy summit',
-          purpose: 'Afghanistan energy and mineral resources summit.',
+          type: "INTERNATIONAL" as const,
+          destination: "Doha, Qatar — Energy summit",
+          purpose: "Afghanistan energy and mineral resources summit.",
           startDate: new Date(`${thisYear}-10-20`),
           endDate: new Date(`${thisYear}-10-24`),
           cost: 54100,
@@ -406,5 +642,54 @@ export class SeedService {
         `ℹ️ Skipped minister travels seed — ${existingTravelCount} already exist`,
       );
     }
+
+    const provinces = [
+      { name: "Kabul" },
+      { name: "Herat" },
+      { name: "Kandahar" },
+      { name: "Nangarhar" },
+      { name: "Balkh" },
+      { name: "Kunduz" },
+      { name: "Badakhshan" },
+      { name: "Baghlan" },
+      { name: "Bamyan" },
+      { name: "Daykundi" },
+      { name: "Farah" },
+      { name: "Faryab" },
+      { name: "Ghazni" },
+      { name: "Ghor" },
+      { name: "Helmand" },
+      { name: "Jowzjan" },
+      { name: "Khost" },
+      { name: "Kapisa" },
+      { name: "Kunar" },
+      { name: "Laghman" },
+      { name: "Logar" },
+      { name: "Maidan Wardak" },
+      { name: "Nimroz" },
+      { name: "Nuristan" },
+      { name: "Paktia" },
+      { name: "Paktika" },
+      { name: "Panjshir" },
+      { name: "Parwan" },
+      { name: "Samangan" },
+      { name: "Sar-e Pol" },
+      { name: "Takhar" },
+      { name: "Urozgan" },
+      { name: "Zabul" },
+      { name: "Badghis" },
+    ];
+
+    for (const province of provinces) {
+      await this.prismaService.province.upsert({
+        where: {
+          name: province.name,
+        },
+        update: {},
+        create: province,
+      });
+    }
+
+    console.log("Afghanistan provinces seeded successfully");
   }
 }
