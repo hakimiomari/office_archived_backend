@@ -75,19 +75,15 @@ model Permission {
 }
 
 enum LicenseType {
-  TRADE
-  IMPORT
-  EXPORT
-  INDUSTRIAL
-  PROFESSIONAL
+  SMALL_SCALE
+  LARGE_SCALE
 }
 
 enum LicenseStatus {
   ACTIVE
   EXPIRED
+  TERMINATED
   PENDING
-  SUSPENDED
-  CANCELLED
 }
 
 enum ContractStatus {
@@ -97,23 +93,25 @@ enum ContractStatus {
   PENDING
 }
 
-model Material{
-  id            String      @id @default(ulid())
-  name          String
-}
 
 model Company {
   id              String      @id @default(uuid())
 
-  licenseNumber   String
-  TIN             String
+  name            String
+  licenseNumber   String      @unique
+  TIN             String      @unique
   address         String
 
   createdAt       DateTime    @default(now())
+  createdBy       Int?
+
   updatedAt       DateTime    @updatedAt
+  updatedBy       Int?
+
+  deletedBy       Int?
 
   owners          Owner[]
-  contracts       Contract[]
+  miningLicense   MiningLicense[]
 
   @@map("companies")
 }
@@ -122,71 +120,90 @@ model Owner {
   id              String      @id @default(uuid())
 
   name            String
+  position        String
   shareAmount     Decimal     @db.Decimal(10, 2)
 
   companyId       String
-  company         Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  createdBy       Int?
 
+  updatedAt       DateTime    @updatedAt
+  updatedBy       Int?
+
+  deletedBy       Int?
+
+  company         Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
   @@map("owners")
 }
 
-model License {
+model MiningLicense {
   id              String          @id @default(uuid())
 
-  licenseType     LicenseType
-  status          LicenseStatus
+  companyId       String
+  mieralTypeId    String
+  licenseType     LicenseType     @default(SMALL_SCALE)
+  status          LicenseStatus   @default(ACTIVE)
 
   issueDate       DateTime
   expiryDate      DateTime
 
-  province        String
-  district        String
+  mineAddress         String
 
-  createdBy       String
-
-  created_by      Int?
-  deleted_by      Int?
-
+  createdBy       Int?
   createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
 
-  contracts       Contract[]
+  updatedAt       DateTime        @updatedAt
+  updatedBy       Int?
+  deletedBy       Int?
+
+  mineralType     MineralType     @relation(fields: [mieralTypeId],references: [id], onDelete: Cascade)
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("licenses")
 }
 
 model Contract {
   id              String          @id @default(uuid())
+  companyName     String
 
-  companyId       String
-  licenseId       String
+  status          ContractStatus  @default(ACTIVE)
 
-  contractType    ContractType
-  status          ContractStatus
+  mieralTypeId     String     
+  registrationNumber String?      @unique
 
-  contractNumber  String?
+  price           String
+  mineAddress     String
 
-  startDate       DateTime?
-  endDate         DateTime?
+  issueDate       DateTime
+  expiryDate      DateTime
 
-  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  license         License         @relation(fields: [licenseId], references: [id], onDelete: Cascade)
-
+  createdBy       Int?
   createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
 
-  @@unique([companyId, licenseId])
+  updatedAt       DateTime        @updatedAt
+  updatedBy       Int?
+  deletedBy       Int?
+
+  mineralType     MineralType     @relation(fields: [mieralTypeId],references: [id], onDelete: Cascade)
 
   @@map("contracts")
 }
 
+model MineralType{
+  id              String          @id @default(uuid())
+  name            String          @unique
+  mineralCategory MineralCategory @default(METALLIC)
 
-enum ContractType {
-  SMALL_SCALE
-  LARGE_SCALE
+  miningLicenses   MiningLicense[]
+  contracts        Contract[]
+        
+}
+
+enum MineralCategory {
+  METALLIC
+  NONMETALLIC
 }
 
 

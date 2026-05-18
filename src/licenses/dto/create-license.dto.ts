@@ -3,33 +3,42 @@ import {
   IsEnum,
   IsDateString,
   IsNotEmpty,
+  IsOptional,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum LicenseType {
-  TRADE = 'TRADE',
-  IMPORT = 'IMPORT',
-  EXPORT = 'EXPORT',
-  INDUSTRIAL = 'INDUSTRIAL',
-  PROFESSIONAL = 'PROFESSIONAL',
+  SMALL_SCALE = 'SMALL_SCALE',
+  LARGE_SCALE = 'LARGE_SCALE',
 }
 
 export enum LicenseStatus {
   ACTIVE = 'ACTIVE',
   EXPIRED = 'EXPIRED',
+  TERMINATED = 'TERMINATED',
   PENDING = 'PENDING',
-  SUSPENDED = 'SUSPENDED',
-  CANCELLED = 'CANCELLED',
 }
 
 export class CreateLicenseDto {
-  @ApiProperty({ enum: LicenseType })
-  @IsEnum(LicenseType)
-  licenseType: LicenseType;
+  @ApiProperty({ description: 'Company this license belongs to' })
+  @IsString()
+  @IsNotEmpty()
+  companyId: string;
 
-  @ApiProperty({ enum: LicenseStatus })
+  @ApiProperty({ description: 'Mineral type this license covers' })
+  @IsString()
+  @IsNotEmpty()
+  mineralTypeId: string;
+
+  @ApiPropertyOptional({ enum: LicenseType, default: LicenseType.SMALL_SCALE })
+  @IsOptional()
+  @IsEnum(LicenseType)
+  licenseType?: LicenseType;
+
+  @ApiPropertyOptional({ enum: LicenseStatus, default: LicenseStatus.ACTIVE })
+  @IsOptional()
   @IsEnum(LicenseStatus)
-  status: LicenseStatus;
+  status?: LicenseStatus;
 
   @ApiProperty({ example: '2024-01-01' })
   @IsDateString()
@@ -39,13 +48,8 @@ export class CreateLicenseDto {
   @IsDateString()
   expiryDate: string;
 
-  @ApiProperty({ example: 'Kabul' })
+  @ApiProperty({ example: 'Kabul, District 1' })
   @IsString()
   @IsNotEmpty()
-  province: string;
-
-  @ApiProperty({ example: 'District 1' })
-  @IsString()
-  @IsNotEmpty()
-  district: string;
+  mineAddress: string;
 }

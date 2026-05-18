@@ -8,6 +8,7 @@ import { UserModule } from "./users/users.module";
 import { LicensesModule } from "./licenses/licenses.module";
 import { ContractsModule } from "./contracts/contracts.module";
 import { CompaniesModule } from "./companies/companies.module";
+import { MineralTypesModule } from "./mineral-types/mineral-types.module";
 import { ReportsModule } from "./reports/reports.module";
 import { RolesModule } from "./roles/roles.module";
 import { MinioModule } from "./minio/minio.module";
@@ -37,6 +38,7 @@ import environmentValidation from "./config/environment.validation";
     LicensesModule,
     ContractsModule,
     CompaniesModule,
+    MineralTypesModule,
     ReportsModule,
     RolesModule,
     TendersModule,

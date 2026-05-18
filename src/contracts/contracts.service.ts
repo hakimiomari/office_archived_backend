@@ -9,41 +9,40 @@ import { CreateContractDto } from './dto/create-contract.dto';
 import { UpdateContractDto } from './dto/update-contract.dto';
 
 /**
- * Contracts are the relationship record linking a Company to a License
- * (one contract per company+license pair — enforced by the
- * `@@unique([companyId, licenseId])` constraint in the schema). They
- * carry the contract type, status, an optional human reference number,
- * and an optional active period.
+ * Contract — a mining contract for a named company covering a MineralType.
+ * `price` is stored as a free-form string; `registrationNumber` is unique
+ * when present.
  */
 @Injectable()
 export class ContractsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async ensureRefs(companyId: string, licenseId: string) {
-    const [company, license] = await Promise.all([
-      this.prisma.company.findUnique({ where: { id: companyId } }),
-      this.prisma.license.findUnique({ where: { id: licenseId } }),
-    ]);
-    if (!company)
-      throw new NotFoundException(`Company with id ${companyId} not found`);
-    if (!license)
-      throw new NotFoundException(`License with id ${licenseId} not found`);
+  private async ensureMineral(mineralTypeId: string) {
+    const mineral = await this.prisma.mineralType.findUnique({
+      where: { id: mineralTypeId },
+    });
+    if (!mineral)
+      throw new NotFoundException(
+        `Mineral type with id ${mineralTypeId} not found`,
+      );
   }
 
-  async create(dto: CreateContractDto) {
-    await this.ensureRefs(dto.companyId, dto.licenseId);
+  async create(dto: CreateContractDto, userId?: number) {
+    await this.ensureMineral(dto.mineralTypeId);
     try {
       return await this.prisma.contract.create({
         data: {
-          companyId: dto.companyId,
-          licenseId: dto.licenseId,
-          contractType: dto.contractType,
+          companyName: dto.companyName,
           status: dto.status,
-          contractNumber: dto.contractNumber,
-          startDate: dto.startDate ? new Date(dto.startDate) : null,
-          endDate: dto.endDate ? new Date(dto.endDate) : null,
+          mieralTypeId: dto.mineralTypeId,
+          registrationNumber: dto.registrationNumber,
+          price: dto.price,
+          mineAddress: dto.mineAddress,
+          issueDate: new Date(dto.issueDate),
+          expiryDate: new Date(dto.expiryDate),
+          createdBy: userId ?? null,
         },
-        include: { company: true, license: true },
+        include: { mineralType: true },
       });
     } catch (e) {
       if (
@@ -51,23 +50,38 @@ export class ContractsService {
         e.code === 'P2002'
       ) {
         throw new BadRequestException(
-          'A contract already exists for this company and license',
+          'A contract with this registration number already exists',
         );
       }
       throw e;
     }
   }
 
-  async findAll(
-    page = 1,
-    limit = 10,
-    companyId?: string,
-    licenseId?: string,
-  ) {
+  async findAll(page = 1, limit = 10, search?: string) {
     const skip = (page - 1) * limit;
-    const where: Prisma.ContractWhereInput = {};
-    if (companyId) where.companyId = companyId;
-    if (licenseId) where.licenseId = licenseId;
+    const where: Prisma.ContractWhereInput = search
+      ? {
+          OR: [
+            {
+              companyName: {
+                contains: search,
+                mode: 'insensitive' as const,
+              },
+            },
+            {
+              registrationNumber: {
+                contains: search,
+                mode: 'insensitive' as const,
+              },
+            },
+            {
+              mineralType: {
+                name: { contains: search, mode: 'insensitive' as const },
+              },
+            },
+          ],
+        }
+      : {};
 
     const [data, total] = await Promise.all([
       this.prisma.contract.findMany({
@@ -75,7 +89,7 @@ export class ContractsService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: { company: true, license: true },
+        include: { mineralType: true },
       }),
       this.prisma.contract.count({ where }),
     ]);
@@ -86,18 +100,10 @@ export class ContractsService {
     };
   }
 
-  async findByLicense(licenseId: string) {
-    return this.prisma.contract.findMany({
-      where: { licenseId },
-      orderBy: { createdAt: 'desc' },
-      include: { company: true },
-    });
-  }
-
   async findOne(id: string) {
     const contract = await this.prisma.contract.findUnique({
       where: { id },
-      include: { company: true, license: true },
+      include: { mineralType: true },
     });
     if (!contract) {
       throw new NotFoundException(`Contract with id ${id} not found`);
@@ -105,30 +111,30 @@ export class ContractsService {
     return contract;
   }
 
-  async update(id: string, dto: UpdateContractDto) {
+  async update(id: string, dto: UpdateContractDto, userId?: number) {
     await this.findOne(id);
-    if (dto.companyId && dto.licenseId) {
-      await this.ensureRefs(dto.companyId, dto.licenseId);
-    }
+    if (dto.mineralTypeId) await this.ensureMineral(dto.mineralTypeId);
     try {
       return await this.prisma.contract.update({
         where: { id },
         data: {
-          ...(dto.companyId && { companyId: dto.companyId }),
-          ...(dto.licenseId && { licenseId: dto.licenseId }),
-          ...(dto.contractType && { contractType: dto.contractType }),
+          ...(dto.companyName !== undefined && {
+            companyName: dto.companyName,
+          }),
           ...(dto.status && { status: dto.status }),
-          ...(dto.contractNumber !== undefined && {
-            contractNumber: dto.contractNumber,
+          ...(dto.mineralTypeId && { mieralTypeId: dto.mineralTypeId }),
+          ...(dto.registrationNumber !== undefined && {
+            registrationNumber: dto.registrationNumber,
           }),
-          ...(dto.startDate !== undefined && {
-            startDate: dto.startDate ? new Date(dto.startDate) : null,
+          ...(dto.price !== undefined && { price: dto.price }),
+          ...(dto.mineAddress !== undefined && {
+            mineAddress: dto.mineAddress,
           }),
-          ...(dto.endDate !== undefined && {
-            endDate: dto.endDate ? new Date(dto.endDate) : null,
-          }),
+          ...(dto.issueDate && { issueDate: new Date(dto.issueDate) }),
+          ...(dto.expiryDate && { expiryDate: new Date(dto.expiryDate) }),
+          updatedBy: userId ?? null,
         },
-        include: { company: true, license: true },
+        include: { mineralType: true },
       });
     } catch (e) {
       if (
@@ -136,7 +142,7 @@ export class ContractsService {
         e.code === 'P2002'
       ) {
         throw new BadRequestException(
-          'A contract already exists for this company and license',
+          'A contract with this registration number already exists',
         );
       }
       throw e;

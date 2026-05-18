@@ -20,6 +20,7 @@ export class CompaniesService {
     const where = search
       ? {
           OR: [
+            { name: { contains: search, mode: 'insensitive' as const } },
             { licenseNumber: { contains: search, mode: 'insensitive' as const } },
             { TIN: { contains: search, mode: 'insensitive' as const } },
             { address: { contains: search, mode: 'insensitive' as const } },
@@ -33,7 +34,10 @@ export class CompaniesService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: { owners: true, _count: { select: { contracts: true } } },
+        include: {
+          owners: true,
+          _count: { select: { miningLicense: true } },
+        },
       }),
       this.prisma.company.count({ where }),
     ]);
@@ -54,7 +58,7 @@ export class CompaniesService {
       where: { id },
       include: {
         owners: { orderBy: { createdAt: 'asc' } },
-        contracts: { include: { license: true } },
+        miningLicense: { include: { mineralType: true } },
       },
     });
     if (!company) {
@@ -90,6 +94,7 @@ export class CompaniesService {
     return this.prisma.owner.create({
       data: {
         name: dto.name,
+        position: dto.position,
         shareAmount: dto.shareAmount,
         companyId,
       },

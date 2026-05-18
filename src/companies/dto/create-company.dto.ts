@@ -2,6 +2,11 @@ import { IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateCompanyDto {
+  @ApiProperty({ example: 'Acme Trading Co.' })
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
   @ApiProperty({ example: 'LIC-2026-001' })
   @IsString()
   @IsNotEmpty()

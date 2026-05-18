@@ -26,7 +26,7 @@ export class ReportFilterDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  province?: string;
+  mineAddress?: string;
 
   @ApiPropertyOptional({ example: '1' })
   @IsOptional()

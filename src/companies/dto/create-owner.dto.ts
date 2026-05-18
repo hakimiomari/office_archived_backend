@@ -8,6 +8,11 @@ export class CreateOwnerDto {
   @IsNotEmpty()
   name: string;
 
+  @ApiProperty({ example: 'Director' })
+  @IsString()
+  @IsNotEmpty()
+  position: string;
+
   @ApiProperty({ example: 50.0, description: 'Ownership share amount' })
   @Type(() => Number)
   @IsNumber()

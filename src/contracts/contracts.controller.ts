@@ -7,9 +7,11 @@ import {
   Body,
   Param,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { Request } from 'express';
 import { ContractsService } from './contracts.service';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { UpdateContractDto } from './dto/update-contract.dto';
@@ -25,29 +27,28 @@ export class ContractsController {
 
   @Post()
   @Permissions('contract.create')
-  @ApiOperation({ summary: 'Create a contract linking a company to a license' })
-  create(@Body() dto: CreateContractDto) {
-    return this.contractsService.create(dto);
+  @ApiOperation({ summary: 'Create a contract' })
+  create(@Body() dto: CreateContractDto, @Req() req: Request) {
+    const user = req['user'];
+    const userId = user?.sub ? Number(user.sub) : undefined;
+    return this.contractsService.create(dto, userId);
   }
 
   @Get()
   @Permissions('contract.read')
-  @ApiOperation({ summary: 'List contracts (optionally filter by company / license)' })
+  @ApiOperation({ summary: 'List contracts' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'companyId', required: false, type: String })
-  @ApiQuery({ name: 'licenseId', required: false, type: String })
+  @ApiQuery({ name: 'search', required: false, type: String })
   findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
-    @Query('companyId') companyId?: string,
-    @Query('licenseId') licenseId?: string,
+    @Query('search') search?: string,
   ) {
     return this.contractsService.findAll(
       page ? parseInt(page) : 1,
       limit ? parseInt(limit) : 10,
-      companyId,
-      licenseId,
+      search,
     );
   }
 
@@ -61,8 +62,14 @@ export class ContractsController {
   @Patch(':id')
   @Permissions('contract.update')
   @ApiOperation({ summary: 'Update a contract' })
-  update(@Param('id') id: string, @Body() dto: UpdateContractDto) {
-    return this.contractsService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateContractDto,
+    @Req() req: Request,
+  ) {
+    const user = req['user'];
+    const userId = user?.sub ? Number(user.sub) : undefined;
+    return this.contractsService.update(id, dto, userId);
   }
 
   @Delete(':id')

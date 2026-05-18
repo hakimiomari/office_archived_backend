@@ -30,7 +30,8 @@ export class LicensesController {
   @ApiOperation({ summary: 'Create a new license' })
   create(@Body() dto: CreateLicenseDto, @Req() req: Request) {
     const user = req['user'];
-    return this.licensesService.create(dto, String(user.sub));
+    const userId = user?.sub ? Number(user.sub) : undefined;
+    return this.licensesService.create(dto, userId);
   }
 
   @Get()
@@ -61,8 +62,14 @@ export class LicensesController {
   @Patch(':id')
   @Permissions('license.update')
   @ApiOperation({ summary: 'Update a license' })
-  update(@Param('id') id: string, @Body() dto: UpdateLicenseDto) {
-    return this.licensesService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateLicenseDto,
+    @Req() req: Request,
+  ) {
+    const user = req['user'];
+    const userId = user?.sub ? Number(user.sub) : undefined;
+    return this.licensesService.update(id, dto, userId);
   }
 
   @Delete(':id')

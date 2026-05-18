@@ -1,14 +1,14 @@
 -- CreateEnum
-CREATE TYPE "LicenseType" AS ENUM ('TRADE', 'IMPORT', 'EXPORT', 'INDUSTRIAL', 'PROFESSIONAL');
+CREATE TYPE "LicenseType" AS ENUM ('SMALL_SCALE', 'LARGE_SCALE');
 
 -- CreateEnum
-CREATE TYPE "LicenseStatus" AS ENUM ('ACTIVE', 'EXPIRED', 'PENDING', 'SUSPENDED', 'CANCELLED');
+CREATE TYPE "LicenseStatus" AS ENUM ('ACTIVE', 'EXPIRED', 'TERMINATED', 'PENDING');
 
 -- CreateEnum
 CREATE TYPE "ContractStatus" AS ENUM ('ACTIVE', 'EXPIRED', 'TERMINATED', 'PENDING');
 
 -- CreateEnum
-CREATE TYPE "ContractType" AS ENUM ('SMALL_SCALE', 'LARGE_SCALE');
+CREATE TYPE "MineralCategory" AS ENUM ('METALLIC', 'NONMETALLIC');
 
 -- CreateEnum
 CREATE TYPE "TenderType" AS ENUM ('TENDER', 'CONSULTING', 'AUCTION', 'NOTICE', 'ANNOUNCEMENT', 'OTHER');
@@ -90,21 +90,17 @@ CREATE TABLE "permissions" (
 );
 
 -- CreateTable
-CREATE TABLE "Material" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-
-    CONSTRAINT "Material_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "companies" (
     "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
     "licenseNumber" TEXT NOT NULL,
     "TIN" TEXT NOT NULL,
     "address" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdBy" INTEGER,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedBy" INTEGER,
+    "deletedBy" INTEGER,
 
     CONSTRAINT "companies_pkey" PRIMARY KEY ("id")
 );
@@ -113,10 +109,14 @@ CREATE TABLE "companies" (
 CREATE TABLE "owners" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "position" TEXT NOT NULL,
     "shareAmount" DECIMAL(10,2) NOT NULL,
     "companyId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdBy" INTEGER,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedBy" INTEGER,
+    "deletedBy" INTEGER,
 
     CONSTRAINT "owners_pkey" PRIMARY KEY ("id")
 );
@@ -124,17 +124,18 @@ CREATE TABLE "owners" (
 -- CreateTable
 CREATE TABLE "licenses" (
     "id" TEXT NOT NULL,
-    "licenseType" "LicenseType" NOT NULL,
-    "status" "LicenseStatus" NOT NULL,
+    "companyId" TEXT NOT NULL,
+    "mieralTypeId" TEXT NOT NULL,
+    "licenseType" "LicenseType" NOT NULL DEFAULT 'SMALL_SCALE',
+    "status" "LicenseStatus" NOT NULL DEFAULT 'ACTIVE',
     "issueDate" TIMESTAMP(3) NOT NULL,
     "expiryDate" TIMESTAMP(3) NOT NULL,
-    "province" TEXT NOT NULL,
-    "district" TEXT NOT NULL,
-    "createdBy" TEXT NOT NULL,
-    "created_by" INTEGER,
-    "deleted_by" INTEGER,
+    "address" TEXT NOT NULL,
+    "createdBy" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedBy" INTEGER,
+    "deletedBy" INTEGER,
 
     CONSTRAINT "licenses_pkey" PRIMARY KEY ("id")
 );
@@ -142,17 +143,29 @@ CREATE TABLE "licenses" (
 -- CreateTable
 CREATE TABLE "contracts" (
     "id" TEXT NOT NULL,
-    "companyId" TEXT NOT NULL,
-    "licenseId" TEXT NOT NULL,
-    "contractType" "ContractType" NOT NULL,
-    "status" "ContractStatus" NOT NULL,
-    "contractNumber" TEXT,
-    "startDate" TIMESTAMP(3),
-    "endDate" TIMESTAMP(3),
+    "companyName" TEXT NOT NULL,
+    "status" "ContractStatus" NOT NULL DEFAULT 'ACTIVE',
+    "mieralTypeId" TEXT NOT NULL,
+    "registrationNumber" TEXT,
+    "price" TEXT NOT NULL,
+    "issueDate" TIMESTAMP(3) NOT NULL,
+    "expiryDate" TIMESTAMP(3) NOT NULL,
+    "createdBy" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedBy" INTEGER,
+    "deletedBy" INTEGER,
 
     CONSTRAINT "contracts_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "MineralType" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "mineralCategory" "MineralCategory" NOT NULL DEFAULT 'METALLIC',
+
+    CONSTRAINT "MineralType_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -391,7 +404,16 @@ CREATE UNIQUE INDEX "permissions_name_key" ON "permissions"("name");
 CREATE INDEX "permissions_created_by_idx" ON "permissions"("created_by");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "contracts_companyId_licenseId_key" ON "contracts"("companyId", "licenseId");
+CREATE UNIQUE INDEX "companies_licenseNumber_key" ON "companies"("licenseNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "companies_TIN_key" ON "companies"("TIN");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "contracts_registrationNumber_key" ON "contracts"("registrationNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "MineralType_name_key" ON "MineralType"("name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "tenders_sourceUrl_key" ON "tenders"("sourceUrl");
@@ -523,10 +545,13 @@ ALTER TABLE "permissions" ADD CONSTRAINT "permissions_created_by_fkey" FOREIGN K
 ALTER TABLE "owners" ADD CONSTRAINT "owners_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "contracts" ADD CONSTRAINT "contracts_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "licenses" ADD CONSTRAINT "licenses_mieralTypeId_fkey" FOREIGN KEY ("mieralTypeId") REFERENCES "MineralType"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "contracts" ADD CONSTRAINT "contracts_licenseId_fkey" FOREIGN KEY ("licenseId") REFERENCES "licenses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "licenses" ADD CONSTRAINT "licenses_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "contracts" ADD CONSTRAINT "contracts_mieralTypeId_fkey" FOREIGN KEY ("mieralTypeId") REFERENCES "MineralType"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "tenders" ADD CONSTRAINT "tenders_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "organizations"("id") ON DELETE SET NULL ON UPDATE CASCADE;

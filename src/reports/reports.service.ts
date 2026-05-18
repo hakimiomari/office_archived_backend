@@ -9,8 +9,10 @@ import { Prisma } from '@prisma/client';
 export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private buildWhere(filters: ReportFilterDto): Prisma.LicenseWhereInput {
-    const where: Prisma.LicenseWhereInput = {};
+  private buildWhere(
+    filters: ReportFilterDto,
+  ): Prisma.MiningLicenseWhereInput {
+    const where: Prisma.MiningLicenseWhereInput = {};
 
     if (filters.from || filters.to) {
       where.issueDate = {};
@@ -26,8 +28,11 @@ export class ReportsService {
       where.status = filters.status;
     }
 
-    if (filters.province) {
-      where.province = { contains: filters.province, mode: 'insensitive' };
+    if (filters.mineAddress) {
+      where.mineAddress = {
+        contains: filters.mineAddress,
+        mode: 'insensitive',
+      };
     }
 
     return where;
@@ -40,14 +45,14 @@ export class ReportsService {
     const skip = (page - 1) * limit;
 
     const [data, total, aggregations] = await Promise.all([
-      this.prisma.license.findMany({
+      this.prisma.miningLicense.findMany({
         where,
         skip,
         take: limit,
         orderBy: { issueDate: 'desc' },
-        include: { contracts: true },
+        include: { company: true, mineralType: true },
       }),
-      this.prisma.license.count({ where }),
+      this.prisma.miningLicense.count({ where }),
       this.getAggregations(where),
     ]);
 
@@ -63,19 +68,19 @@ export class ReportsService {
     };
   }
 
-  private async getAggregations(where: Prisma.LicenseWhereInput) {
+  private async getAggregations(where: Prisma.MiningLicenseWhereInput) {
     const [byType, byStatus, totalCount] = await Promise.all([
-      this.prisma.license.groupBy({
+      this.prisma.miningLicense.groupBy({
         by: ['licenseType'],
         where,
         _count: { id: true },
       }),
-      this.prisma.license.groupBy({
+      this.prisma.miningLicense.groupBy({
         by: ['status'],
         where,
         _count: { id: true },
       }),
-      this.prisma.license.count({ where }),
+      this.prisma.miningLicense.count({ where }),
     ]);
 
     return {
@@ -94,54 +99,91 @@ export class ReportsService {
   async getChartData(filters: ReportFilterDto) {
     const where = this.buildWhere(filters);
 
-    const [byProvince, byType, byStatus, allLicenses] = await Promise.all([
-      this.prisma.license.groupBy({
-        by: ['province'],
+    const [byMineralGroup, byType, byStatus, allLicenses] = await Promise.all([
+      this.prisma.miningLicense.groupBy({
+        by: ['mieralTypeId'],
         where,
         _count: { id: true },
         orderBy: { _count: { id: 'desc' } },
       }),
-      this.prisma.license.groupBy({
+      this.prisma.miningLicense.groupBy({
         by: ['licenseType'],
         where,
         _count: { id: true },
       }),
-      this.prisma.license.groupBy({
+      this.prisma.miningLicense.groupBy({
         by: ['status'],
         where,
         _count: { id: true },
       }),
-      this.prisma.license.findMany({
+      this.prisma.miningLicense.findMany({
         where,
-        select: { issueDate: true, licenseType: true },
-        orderBy: { issueDate: 'asc' },
+        select: { issueDate: true, expiryDate: true },
       }),
     ]);
 
-    // Build monthly trend from actual license data
-    const monthlyMap = new Map<string, { SMALL: number; LARGE: number }>();
+    // Resolve mineral type names for the byMineral breakdown
+    const minerals = await this.prisma.mineralType.findMany({
+      where: { id: { in: byMineralGroup.map((m) => m.mieralTypeId) } },
+      select: { id: true, name: true },
+    });
+    const mineralName = new Map(minerals.map((m) => [m.id, m.name]));
+
+    // Trends are derived ONLY from issueDate (licenses issued) and
+    // expiryDate (licenses expiring) — never createdAt/updatedAt.
+    const monthKey = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const yearKey = (d: Date) => `${d.getFullYear()}`;
+
+    const monthlyMap = new Map<
+      string,
+      { issued: number; expiring: number }
+    >();
+    const yearlyMap = new Map<
+      string,
+      { issued: number; expiring: number }
+    >();
+
+    const bump = (
+      map: Map<string, { issued: number; expiring: number }>,
+      key: string,
+      field: 'issued' | 'expiring',
+    ) => {
+      if (!map.has(key)) map.set(key, { issued: 0, expiring: 0 });
+      map.get(key)![field]++;
+    };
+
     for (const lic of allLicenses) {
-      const d = new Date(lic.issueDate);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      if (!monthlyMap.has(key)) {
-        monthlyMap.set(key, { SMALL: 0, LARGE: 0 });
-      }
-      monthlyMap.get(key)![lic.licenseType]++;
+      const issued = new Date(lic.issueDate);
+      const expiry = new Date(lic.expiryDate);
+      bump(monthlyMap, monthKey(issued), 'issued');
+      bump(monthlyMap, monthKey(expiry), 'expiring');
+      bump(yearlyMap, yearKey(issued), 'issued');
+      bump(yearlyMap, yearKey(expiry), 'expiring');
     }
 
     const monthlyTrend = Array.from(monthlyMap.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([month, counts]) => ({
+      .map(([month, c]) => ({
         month,
-        small: counts.SMALL,
-        large: counts.LARGE,
-        total: counts.SMALL + counts.LARGE,
+        issued: c.issued,
+        expiring: c.expiring,
+        total: c.issued + c.expiring,
+      }));
+
+    const yearlyTrend = Array.from(yearlyMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([year, c]) => ({
+        year,
+        issued: c.issued,
+        expiring: c.expiring,
+        total: c.issued + c.expiring,
       }));
 
     return {
-      byProvince: byProvince.map((p) => ({
-        province: p.province,
-        count: p._count.id,
+      byMineral: byMineralGroup.map((m) => ({
+        mineral: mineralName.get(m.mieralTypeId) ?? m.mieralTypeId,
+        count: m._count.id,
       })),
       byType: byType.map((t) => ({
         type: t.licenseType,
@@ -152,6 +194,7 @@ export class ReportsService {
         count: s._count.id,
       })),
       monthlyTrend,
+      yearlyTrend,
     };
   }
 
@@ -161,9 +204,10 @@ export class ReportsService {
     fileName: string;
   }> {
     const where = this.buildWhere(filters);
-    const licenses = await this.prisma.license.findMany({
+    const licenses = await this.prisma.miningLicense.findMany({
       where,
       orderBy: { issueDate: 'desc' },
+      include: { company: true, mineralType: true },
     });
 
     const exportType = filters.type || 'excel';
@@ -185,7 +229,11 @@ export class ReportsService {
     fileName: string;
   }> {
     return new Promise((resolve) => {
-      const doc = new PDFDocument({ margin: 30, size: 'A4', layout: 'landscape' });
+      const doc = new PDFDocument({
+        margin: 30,
+        size: 'A4',
+        layout: 'landscape',
+      });
       const chunks: Buffer[] = [];
 
       doc.on('data', (chunk) => chunks.push(chunk));
@@ -197,29 +245,39 @@ export class ReportsService {
         });
       });
 
-      // Title
       doc.fontSize(18).text('Mining License Report', { align: 'center' });
       doc.moveDown();
-      doc.fontSize(10).text(`Generated: ${new Date().toISOString().split('T')[0]}`, { align: 'center' });
+      doc
+        .fontSize(10)
+        .text(`Generated: ${new Date().toISOString().split('T')[0]}`, {
+          align: 'center',
+        });
       doc.moveDown(2);
 
-      // Table header
-      const headers = ['#', 'License ID', 'Type', 'Status', 'Province', 'District', 'Issue Date', 'Expiry Date'];
-      const colWidths = [30, 210, 70, 70, 80, 80, 80, 80];
+      const headers = [
+        '#',
+        'Company',
+        'Mineral',
+        'Type',
+        'Status',
+        'Address',
+        'Issue Date',
+        'Expiry Date',
+      ];
+      const colWidths = [25, 140, 90, 80, 75, 140, 75, 75];
       let x = 30;
       const headerY = doc.y;
 
       doc.fontSize(9).font('Helvetica-Bold');
       headers.forEach((header, i) => {
         doc.text(header, x, headerY, { width: colWidths[i] });
-        x += colWidths[i] + 10;
+        x += colWidths[i] + 8;
       });
 
       doc.moveDown();
       doc.moveTo(30, doc.y).lineTo(780, doc.y).stroke();
       doc.moveDown(0.5);
 
-      // Table rows
       doc.font('Helvetica').fontSize(8);
       licenses.forEach((lic, index) => {
         if (doc.y > 520) {
@@ -229,22 +287,21 @@ export class ReportsService {
         const y = doc.y;
         const rowData = [
           String(index + 1),
-          lic.id,
+          lic.company?.name ?? '—',
+          lic.mineralType?.name ?? '—',
           lic.licenseType,
           lic.status,
-          lic.province,
-          lic.district,
+          lic.mineAddress,
           new Date(lic.issueDate).toISOString().split('T')[0],
           new Date(lic.expiryDate).toISOString().split('T')[0],
         ];
         rowData.forEach((cell, i) => {
-          doc.text(cell, x, y, { width: colWidths[i] });
-          x += colWidths[i] + 10;
+          doc.text(String(cell), x, y, { width: colWidths[i] });
+          x += colWidths[i] + 8;
         });
         doc.moveDown();
       });
 
-      // Summary
       doc.moveDown(2);
       doc.font('Helvetica-Bold').fontSize(10);
       doc.text(`Total Licenses: ${licenses.length}`);
@@ -260,11 +317,11 @@ export class ReportsService {
   }> {
     const rows = licenses.map((lic, i) => ({
       '#': i + 1,
-      'License ID': lic.id,
+      Company: lic.company?.name ?? '',
+      Mineral: lic.mineralType?.name ?? '',
       'License Type': lic.licenseType,
       Status: lic.status,
-      Province: lic.province,
-      District: lic.district,
+      Address: lic.mineAddress,
       'Issue Date': new Date(lic.issueDate).toISOString().split('T')[0],
       'Expiry Date': new Date(lic.expiryDate).toISOString().split('T')[0],
     }));
@@ -273,7 +330,9 @@ export class ReportsService {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Licenses');
 
-    const buffer = Buffer.from(XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }));
+    const buffer = Buffer.from(
+      XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }),
+    );
 
     return {
       buffer,
@@ -289,22 +348,22 @@ export class ReportsService {
     fileName: string;
   }> {
     const headers = [
-      'License ID',
+      'Company',
+      'Mineral',
       'License Type',
       'Status',
-      'Province',
-      'District',
+      'Address',
       'Issue Date',
       'Expiry Date',
     ];
 
     const rows = licenses.map((lic) =>
       [
-        lic.id,
+        lic.company?.name ?? '',
+        lic.mineralType?.name ?? '',
         lic.licenseType,
         lic.status,
-        lic.province,
-        lic.district,
+        `"${String(lic.mineAddress).replace(/"/g, '""')}"`,
         new Date(lic.issueDate).toISOString().split('T')[0],
         new Date(lic.expiryDate).toISOString().split('T')[0],
       ].join(','),

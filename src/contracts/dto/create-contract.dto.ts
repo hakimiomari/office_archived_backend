@@ -7,11 +7,6 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export enum ContractType {
-  SMALL_SCALE = 'SMALL_SCALE',
-  LARGE_SCALE = 'LARGE_SCALE',
-}
-
 export enum ContractStatus {
   ACTIVE = 'ACTIVE',
   EXPIRED = 'EXPIRED',
@@ -20,36 +15,44 @@ export enum ContractStatus {
 }
 
 export class CreateContractDto {
-  @ApiProperty({ description: 'Company this contract belongs to' })
+  @ApiProperty({ example: 'Acme Trading Co.' })
   @IsString()
   @IsNotEmpty()
-  companyId: string;
+  companyName: string;
 
-  @ApiProperty({ description: 'License this contract is for' })
-  @IsString()
-  @IsNotEmpty()
-  licenseId: string;
-
-  @ApiProperty({ enum: ContractType })
-  @IsEnum(ContractType)
-  contractType: ContractType;
-
-  @ApiProperty({ enum: ContractStatus })
+  @ApiPropertyOptional({
+    enum: ContractStatus,
+    default: ContractStatus.ACTIVE,
+  })
+  @IsOptional()
   @IsEnum(ContractStatus)
-  status: ContractStatus;
+  status?: ContractStatus;
 
-  @ApiPropertyOptional({ example: 'CTR-2026-001' })
+  @ApiProperty({ description: 'Mineral type this contract covers' })
+  @IsString()
+  @IsNotEmpty()
+  mineralTypeId: string;
+
+  @ApiPropertyOptional({ example: 'REG-2026-001' })
   @IsOptional()
   @IsString()
-  contractNumber?: string;
+  registrationNumber?: string;
 
-  @ApiPropertyOptional({ example: '2026-01-01' })
-  @IsOptional()
-  @IsDateString()
-  startDate?: string;
+  @ApiProperty({ example: '50000', description: 'Contract price' })
+  @IsString()
+  @IsNotEmpty()
+  price: string;
 
-  @ApiPropertyOptional({ example: '2027-01-01' })
-  @IsOptional()
+  @ApiProperty({ example: 'Kabul, District 1' })
+  @IsString()
+  @IsNotEmpty()
+  mineAddress: string;
+
+  @ApiProperty({ example: '2026-01-01' })
   @IsDateString()
-  endDate?: string;
+  issueDate: string;
+
+  @ApiProperty({ example: '2027-01-01' })
+  @IsDateString()
+  expiryDate: string;
 }

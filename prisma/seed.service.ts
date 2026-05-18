@@ -68,6 +68,27 @@ export class SeedService {
       { name: "owner.read", group_name: "owner", label: "Read Owner" },
       { name: "owner.update", group_name: "owner", label: "Update Owner" },
       { name: "owner.delete", group_name: "owner", label: "Delete Owner" },
+      // Mineral Type
+      {
+        name: "mineraltype.create",
+        group_name: "mineraltype",
+        label: "Create Mineral Type",
+      },
+      {
+        name: "mineraltype.read",
+        group_name: "mineraltype",
+        label: "Read Mineral Type",
+      },
+      {
+        name: "mineraltype.update",
+        group_name: "mineraltype",
+        label: "Update Mineral Type",
+      },
+      {
+        name: "mineraltype.delete",
+        group_name: "mineraltype",
+        label: "Delete Mineral Type",
+      },
       // Report
       { name: "report.view", group_name: "report", label: "View Reports" },
       { name: "report.export", group_name: "report", label: "Export Reports" },
@@ -245,6 +266,10 @@ export class SeedService {
       "owner.read",
       "owner.update",
       "owner.delete",
+      "mineraltype.create",
+      "mineraltype.read",
+      "mineraltype.update",
+      "mineraltype.delete",
       "report.view",
       "report.export",
       "tender.create",
@@ -289,6 +314,7 @@ export class SeedService {
       "contract.read",
       "company.read",
       "owner.read",
+      "mineraltype.read",
       "report.view",
       "tender.read",
       "executive.read",
@@ -328,6 +354,9 @@ export class SeedService {
       "owner.read",
       "owner.update",
       "owner.delete",
+      "mineraltype.create",
+      "mineraltype.read",
+      "mineraltype.update",
     ]
       .map((n) => permByName(n))
       .filter(Boolean);
@@ -361,7 +390,30 @@ export class SeedService {
 
     console.log("✅ Admin user assigned admin role");
 
-    // ─── 5. EXECUTIVE DASHBOARD SAMPLE DATA ───
+    // ─── 5. MINERAL TYPES ───
+    const mineralTypes: {
+      name: string;
+      mineralCategory: "METALLIC" | "NONMETALLIC";
+    }[] = [
+      { name: "Gold", mineralCategory: "METALLIC" },
+      { name: "Copper", mineralCategory: "METALLIC" },
+      { name: "Iron", mineralCategory: "METALLIC" },
+      { name: "Lithium", mineralCategory: "METALLIC" },
+      { name: "Coal", mineralCategory: "NONMETALLIC" },
+      { name: "Marble", mineralCategory: "NONMETALLIC" },
+      { name: "Gemstone", mineralCategory: "NONMETALLIC" },
+      { name: "Limestone", mineralCategory: "NONMETALLIC" },
+    ];
+    for (const mt of mineralTypes) {
+      await this.prismaService.mineralType.upsert({
+        where: { name: mt.name },
+        update: { mineralCategory: mt.mineralCategory },
+        create: mt,
+      });
+    }
+    console.log(`✅ Seeded ${mineralTypes.length} mineral types`);
+
+    // ─── 6. EXECUTIVE DASHBOARD SAMPLE DATA ───
     await this.seedExecutiveData(adminUser.id);
   }
 
