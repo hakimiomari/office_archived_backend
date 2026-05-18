@@ -1,4 +1,16 @@
 -- CreateEnum
+CREATE TYPE "LicenseType" AS ENUM ('TRADE', 'IMPORT', 'EXPORT', 'INDUSTRIAL', 'PROFESSIONAL');
+
+-- CreateEnum
+CREATE TYPE "LicenseStatus" AS ENUM ('ACTIVE', 'EXPIRED', 'PENDING', 'SUSPENDED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "ContractStatus" AS ENUM ('ACTIVE', 'EXPIRED', 'TERMINATED', 'PENDING');
+
+-- CreateEnum
+CREATE TYPE "ContractType" AS ENUM ('SMALL_SCALE', 'LARGE_SCALE');
+
+-- CreateEnum
 CREATE TYPE "TenderType" AS ENUM ('TENDER', 'CONSULTING', 'AUCTION', 'NOTICE', 'ANNOUNCEMENT', 'OTHER');
 
 -- CreateEnum
@@ -12,18 +24,6 @@ CREATE TYPE "TenderActivityAction" AS ENUM ('VIEWED', 'APPLIED', 'IGNORED', 'ASS
 
 -- CreateEnum
 CREATE TYPE "TenderLanguage" AS ENUM ('EN', 'PS', 'FA');
-
--- CreateEnum
-CREATE TYPE "ItemCategory" AS ENUM ('OFFICE_SUPPLIES', 'IT_EQUIPMENT', 'PROJECT_MATERIALS', 'CONSUMABLES', 'ASSETS', 'OTHER');
-
--- CreateEnum
-CREATE TYPE "StockMovementType" AS ENUM ('IN', 'OUT', 'TRANSFER', 'ADJUSTMENT');
-
--- CreateEnum
-CREATE TYPE "StockMovementReference" AS ENUM ('PURCHASE', 'TENDER', 'MANUAL', 'TRANSFER', 'ADJUSTMENT');
-
--- CreateEnum
-CREATE TYPE "PurchaseStatus" AS ENUM ('PENDING', 'RECEIVED', 'CANCELLED');
 
 -- CreateEnum
 CREATE TYPE "KpiCategory" AS ENUM ('FINANCIAL', 'CONTRACT', 'TRAVEL', 'OPERATIONAL', 'OTHER');
@@ -49,11 +49,111 @@ CREATE TYPE "EquipmentMaintenanceStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'COM
 -- CreateEnum
 CREATE TYPE "EmployeeStatus" AS ENUM ('ACTIVE', 'INACTIVE', 'ON_LEAVE', 'TERMINATED');
 
--- AlterTable
-ALTER TABLE "roles" ADD COLUMN     "description" TEXT;
+-- CreateTable
+CREATE TABLE "users" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "password" TEXT,
+    "googleId" TEXT,
+    "profile_picture" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+    "created_by" INTEGER,
+    "updated_by" INTEGER,
 
--- AlterTable
-ALTER TABLE "users" ADD COLUMN     "isActive" BOOLEAN NOT NULL DEFAULT true;
+    CONSTRAINT "users_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "roles" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "created_by" INTEGER NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "roles_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "permissions" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "group_name" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "created_by" INTEGER,
+
+    CONSTRAINT "permissions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Material" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+
+    CONSTRAINT "Material_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "companies" (
+    "id" TEXT NOT NULL,
+    "licenseNumber" TEXT NOT NULL,
+    "TIN" TEXT NOT NULL,
+    "address" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "companies_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "owners" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "shareAmount" DECIMAL(10,2) NOT NULL,
+    "companyId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "owners_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "licenses" (
+    "id" TEXT NOT NULL,
+    "licenseType" "LicenseType" NOT NULL,
+    "status" "LicenseStatus" NOT NULL,
+    "issueDate" TIMESTAMP(3) NOT NULL,
+    "expiryDate" TIMESTAMP(3) NOT NULL,
+    "province" TEXT NOT NULL,
+    "district" TEXT NOT NULL,
+    "createdBy" TEXT NOT NULL,
+    "created_by" INTEGER,
+    "deleted_by" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "licenses_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "contracts" (
+    "id" TEXT NOT NULL,
+    "companyId" TEXT NOT NULL,
+    "licenseId" TEXT NOT NULL,
+    "contractType" "ContractType" NOT NULL,
+    "status" "ContractStatus" NOT NULL,
+    "contractNumber" TEXT,
+    "startDate" TIMESTAMP(3),
+    "endDate" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "contracts_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "organizations" (
@@ -109,103 +209,6 @@ CREATE TABLE "tender_activity" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "tender_activity_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "items" (
-    "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
-    "sku" TEXT,
-    "category" "ItemCategory" NOT NULL DEFAULT 'OTHER',
-    "unit" TEXT NOT NULL DEFAULT 'pcs',
-    "description" TEXT,
-    "minStock" DOUBLE PRECISION NOT NULL DEFAULT 0,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "items_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "warehouses" (
-    "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
-    "location" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "warehouses_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "inventory_stock" (
-    "id" SERIAL NOT NULL,
-    "itemId" INTEGER NOT NULL,
-    "warehouseId" INTEGER NOT NULL,
-    "quantity" DOUBLE PRECISION NOT NULL DEFAULT 0,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "inventory_stock_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "stock_movements" (
-    "id" SERIAL NOT NULL,
-    "itemId" INTEGER NOT NULL,
-    "type" "StockMovementType" NOT NULL,
-    "quantity" DOUBLE PRECISION NOT NULL,
-    "sourceWarehouseId" INTEGER,
-    "targetWarehouseId" INTEGER,
-    "referenceType" "StockMovementReference" NOT NULL DEFAULT 'MANUAL',
-    "referenceId" INTEGER,
-    "tenderId" TEXT,
-    "purchaseId" INTEGER,
-    "userId" INTEGER,
-    "notes" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "stock_movements_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "suppliers" (
-    "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
-    "contact" TEXT,
-    "email" TEXT,
-    "phone" TEXT,
-    "address" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "suppliers_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "purchases" (
-    "id" SERIAL NOT NULL,
-    "supplierId" INTEGER,
-    "referenceNo" TEXT,
-    "totalAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
-    "purchaseDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "status" "PurchaseStatus" NOT NULL DEFAULT 'PENDING',
-    "notes" TEXT,
-    "createdBy" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "purchases_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "purchase_items" (
-    "id" SERIAL NOT NULL,
-    "purchaseId" INTEGER NOT NULL,
-    "itemId" INTEGER NOT NULL,
-    "quantity" DOUBLE PRECISION NOT NULL,
-    "price" DOUBLE PRECISION NOT NULL DEFAULT 0,
-
-    CONSTRAINT "purchase_items_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -348,6 +351,48 @@ CREATE TABLE "employees" (
     CONSTRAINT "employees_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "provinces" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT,
+
+    CONSTRAINT "provinces_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "_UserRoles" (
+    "A" INTEGER NOT NULL,
+    "B" INTEGER NOT NULL,
+
+    CONSTRAINT "_UserRoles_AB_pkey" PRIMARY KEY ("A","B")
+);
+
+-- CreateTable
+CREATE TABLE "_RolePermissions" (
+    "A" INTEGER NOT NULL,
+    "B" INTEGER NOT NULL,
+
+    CONSTRAINT "_RolePermissions_AB_pkey" PRIMARY KEY ("A","B")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_googleId_key" ON "users"("googleId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "roles_name_key" ON "roles"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "permissions_name_key" ON "permissions"("name");
+
+-- CreateIndex
+CREATE INDEX "permissions_created_by_idx" ON "permissions"("created_by");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "contracts_companyId_licenseId_key" ON "contracts"("companyId", "licenseId");
+
 -- CreateIndex
 CREATE UNIQUE INDEX "tenders_sourceUrl_key" ON "tenders"("sourceUrl");
 
@@ -383,54 +428,6 @@ CREATE INDEX "tender_activity_action_idx" ON "tender_activity"("action");
 
 -- CreateIndex
 CREATE INDEX "tender_activity_createdAt_idx" ON "tender_activity"("createdAt");
-
--- CreateIndex
-CREATE UNIQUE INDEX "items_sku_key" ON "items"("sku");
-
--- CreateIndex
-CREATE INDEX "items_category_idx" ON "items"("category");
-
--- CreateIndex
-CREATE INDEX "items_name_idx" ON "items"("name");
-
--- CreateIndex
-CREATE INDEX "inventory_stock_itemId_idx" ON "inventory_stock"("itemId");
-
--- CreateIndex
-CREATE INDEX "inventory_stock_warehouseId_idx" ON "inventory_stock"("warehouseId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "inventory_stock_itemId_warehouseId_key" ON "inventory_stock"("itemId", "warehouseId");
-
--- CreateIndex
-CREATE INDEX "stock_movements_itemId_idx" ON "stock_movements"("itemId");
-
--- CreateIndex
-CREATE INDEX "stock_movements_type_idx" ON "stock_movements"("type");
-
--- CreateIndex
-CREATE INDEX "stock_movements_createdAt_idx" ON "stock_movements"("createdAt");
-
--- CreateIndex
-CREATE INDEX "stock_movements_tenderId_idx" ON "stock_movements"("tenderId");
-
--- CreateIndex
-CREATE INDEX "stock_movements_purchaseId_idx" ON "stock_movements"("purchaseId");
-
--- CreateIndex
-CREATE INDEX "purchases_supplierId_idx" ON "purchases"("supplierId");
-
--- CreateIndex
-CREATE INDEX "purchases_status_idx" ON "purchases"("status");
-
--- CreateIndex
-CREATE INDEX "purchases_purchaseDate_idx" ON "purchases"("purchaseDate");
-
--- CreateIndex
-CREATE INDEX "purchase_items_purchaseId_idx" ON "purchase_items"("purchaseId");
-
--- CreateIndex
-CREATE INDEX "purchase_items_itemId_idx" ON "purchase_items"("itemId");
 
 -- CreateIndex
 CREATE INDEX "dashboard_kpis_year_idx" ON "dashboard_kpis"("year");
@@ -501,6 +498,36 @@ CREATE INDEX "employees_departmentId_idx" ON "employees"("departmentId");
 -- CreateIndex
 CREATE INDEX "employees_firstName_lastName_idx" ON "employees"("firstName", "lastName");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "provinces_name_key" ON "provinces"("name");
+
+-- CreateIndex
+CREATE INDEX "_UserRoles_B_index" ON "_UserRoles"("B");
+
+-- CreateIndex
+CREATE INDEX "_RolePermissions_B_index" ON "_RolePermissions"("B");
+
+-- AddForeignKey
+ALTER TABLE "users" ADD CONSTRAINT "users_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "users" ADD CONSTRAINT "users_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "roles" ADD CONSTRAINT "roles_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "permissions" ADD CONSTRAINT "permissions_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "owners" ADD CONSTRAINT "owners_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "contracts" ADD CONSTRAINT "contracts_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "contracts" ADD CONSTRAINT "contracts_licenseId_fkey" FOREIGN KEY ("licenseId") REFERENCES "licenses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
 -- AddForeignKey
 ALTER TABLE "tenders" ADD CONSTRAINT "tenders_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "organizations"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -511,36 +538,6 @@ ALTER TABLE "tender_tags" ADD CONSTRAINT "tender_tags_tenderId_fkey" FOREIGN KEY
 ALTER TABLE "tender_activity" ADD CONSTRAINT "tender_activity_tenderId_fkey" FOREIGN KEY ("tenderId") REFERENCES "tenders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "inventory_stock" ADD CONSTRAINT "inventory_stock_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "inventory_stock" ADD CONSTRAINT "inventory_stock_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "warehouses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_sourceWarehouseId_fkey" FOREIGN KEY ("sourceWarehouseId") REFERENCES "warehouses"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_targetWarehouseId_fkey" FOREIGN KEY ("targetWarehouseId") REFERENCES "warehouses"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_tenderId_fkey" FOREIGN KEY ("tenderId") REFERENCES "tenders"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "purchases"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "purchases" ADD CONSTRAINT "purchases_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "suppliers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "purchase_items" ADD CONSTRAINT "purchase_items_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "purchases"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "purchase_items" ADD CONSTRAINT "purchase_items_itemId_fkey" FOREIGN KEY ("itemId") REFERENCES "items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "equipment_assignments" ADD CONSTRAINT "equipment_assignments_equipmentId_fkey" FOREIGN KEY ("equipmentId") REFERENCES "equipment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -548,3 +545,16 @@ ALTER TABLE "equipment_maintenance" ADD CONSTRAINT "equipment_maintenance_equipm
 
 -- AddForeignKey
 ALTER TABLE "employees" ADD CONSTRAINT "employees_departmentId_fkey" FOREIGN KEY ("departmentId") REFERENCES "departments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "_UserRoles" ADD CONSTRAINT "_UserRoles_A_fkey" FOREIGN KEY ("A") REFERENCES "roles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "_UserRoles" ADD CONSTRAINT "_UserRoles_B_fkey" FOREIGN KEY ("B") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "_RolePermissions" ADD CONSTRAINT "_RolePermissions_A_fkey" FOREIGN KEY ("A") REFERENCES "permissions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "_RolePermissions" ADD CONSTRAINT "_RolePermissions_B_fkey" FOREIGN KEY ("B") REFERENCES "roles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
