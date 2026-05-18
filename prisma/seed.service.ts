@@ -22,6 +22,16 @@ export class SeedService {
       { name: 'contract.read', group_name: 'contract', label: 'Read Contract' },
       { name: 'contract.update', group_name: 'contract', label: 'Update Contract' },
       { name: 'contract.delete', group_name: 'contract', label: 'Delete Contract' },
+      // Company
+      { name: 'company.create', group_name: 'company', label: 'Create Company' },
+      { name: 'company.read', group_name: 'company', label: 'Read Company' },
+      { name: 'company.update', group_name: 'company', label: 'Update Company' },
+      { name: 'company.delete', group_name: 'company', label: 'Delete Company' },
+      // Owner
+      { name: 'owner.create', group_name: 'owner', label: 'Create Owner' },
+      { name: 'owner.read', group_name: 'owner', label: 'Read Owner' },
+      { name: 'owner.update', group_name: 'owner', label: 'Update Owner' },
+      { name: 'owner.delete', group_name: 'owner', label: 'Delete Owner' },
       // Report
       { name: 'report.view', group_name: 'report', label: 'View Reports' },
       { name: 'report.export', group_name: 'report', label: 'Export Reports' },
@@ -116,6 +126,8 @@ export class SeedService {
     const managerPerms = [
       'license.create', 'license.read', 'license.update', 'license.delete',
       'contract.create', 'contract.read', 'contract.update', 'contract.delete',
+      'company.create', 'company.read', 'company.update', 'company.delete',
+      'owner.create', 'owner.read', 'owner.update', 'owner.delete',
       'report.view', 'report.export',
       'tender.create', 'tender.read', 'tender.update', 'tender.delete',
       'executive.read', 'executive.create', 'executive.update',
@@ -140,7 +152,7 @@ export class SeedService {
 
     // Viewer → Read-only
     const viewerPerms = [
-      'license.read', 'contract.read', 'report.view', 'tender.read',
+      'license.read', 'contract.read', 'company.read', 'owner.read', 'report.view', 'tender.read',
       'executive.read', 'equipment.read', 'employee.read', 'department.read',
     ].map((n) => permByName(n)).filter(Boolean);
 
@@ -162,6 +174,8 @@ export class SeedService {
     const dataEntryPerms = [
       'license.create', 'license.read', 'license.update',
       'contract.create', 'contract.read', 'contract.update',
+      'company.create', 'company.read', 'company.update',
+      'owner.create', 'owner.read', 'owner.update', 'owner.delete',
     ].map((n) => permByName(n)).filter(Boolean);
 
     await this.prismaService.role.upsert({

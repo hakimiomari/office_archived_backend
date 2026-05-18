@@ -7,6 +7,7 @@ import { RedisModule } from "./redis/redis.module";
 import { UserModule } from "./users/users.module";
 import { LicensesModule } from "./licenses/licenses.module";
 import { ContractsModule } from "./contracts/contracts.module";
+import { CompaniesModule } from "./companies/companies.module";
 import { ReportsModule } from "./reports/reports.module";
 import { RolesModule } from "./roles/roles.module";
 import { MinioModule } from "./minio/minio.module";
@@ -35,6 +36,7 @@ import environmentValidation from "./config/environment.validation";
     UserModule,
     LicensesModule,
     ContractsModule,
+    CompaniesModule,
     ReportsModule,
     RolesModule,
     TendersModule,
