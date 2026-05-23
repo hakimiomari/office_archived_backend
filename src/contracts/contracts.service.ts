@@ -37,6 +37,13 @@ export class ContractsService {
           mieralTypeId: dto.mineralTypeId,
           registrationNumber: dto.registrationNumber,
           price: dto.price,
+          priceCurrency: dto.priceCurrency,
+          royalty: dto.royalty,
+          jobـopportunities: dto.jobـopportunities,
+          social_service_price: dto.social_service_price,
+          social_service_currency: dto.social_service_currency,
+          area: dto.area,
+          unit: dto.unit,
           mineAddress: dto.mineAddress,
           issueDate: new Date(dto.issueDate),
           expiryDate: new Date(dto.expiryDate),
@@ -127,6 +134,21 @@ export class ContractsService {
             registrationNumber: dto.registrationNumber,
           }),
           ...(dto.price !== undefined && { price: dto.price }),
+          ...(dto.priceCurrency !== undefined && {
+            priceCurrency: dto.priceCurrency,
+          }),
+          ...(dto.royalty !== undefined && { royalty: dto.royalty }),
+          ...(dto.jobـopportunities !== undefined && {
+            jobـopportunities: dto.jobـopportunities,
+          }),
+          ...(dto.social_service_price !== undefined && {
+            social_service_price: dto.social_service_price,
+          }),
+          ...(dto.social_service_currency !== undefined && {
+            social_service_currency: dto.social_service_currency,
+          }),
+          ...(dto.area !== undefined && { area: dto.area }),
+          ...(dto.unit !== undefined && { unit: dto.unit }),
           ...(dto.mineAddress !== undefined && {
             mineAddress: dto.mineAddress,
           }),
