@@ -9,10 +9,10 @@ import { LicensesModule } from "./licenses/licenses.module";
 import { ContractsModule } from "./contracts/contracts.module";
 import { CompaniesModule } from "./companies/companies.module";
 import { MineralTypesModule } from "./mineral-types/mineral-types.module";
+import { AuctionsModule } from "./auctions/auctions.module";
 import { ReportsModule } from "./reports/reports.module";
 import { RolesModule } from "./roles/roles.module";
 import { MinioModule } from "./minio/minio.module";
-import { TendersModule } from "./tenders/tenders.module";
 import { ExecutiveModule } from "./executive/executive.module";
 import { EquipmentModule } from "./equipment/equipment.module";
 import { EmployeesModule } from "./employees/employees.module";
@@ -39,9 +39,9 @@ import environmentValidation from "./config/environment.validation";
     ContractsModule,
     CompaniesModule,
     MineralTypesModule,
+    AuctionsModule,
     ReportsModule,
     RolesModule,
-    TendersModule,
     ExecutiveModule,
     EquipmentModule,
     EmployeesModule,

@@ -198,10 +198,32 @@ model Contract {
   @@map("contracts")
 }
 
+model Auction{
+  id            String     @id @default(uuid())
+  mieralTypeId  String     
+  round         String?
+  mass          String
+  unit          MassUnit  @default(Gram)
+  unitPrice     String
+  priceCurrency Currency  @default(AFN)
+  royalty       Int?
+
+
+  mineralType     MineralType     @relation(fields: [mieralTypeId],references: [id], onDelete: Cascade)
+
+  @@map("auctions")
+}
+
 enum Unit{
   Kilometre
   Metre
   Hectares
+}
+
+enum MassUnit{
+  Gram
+  Kilogram
+  Carat
 }
 
 enum Currency {
@@ -216,7 +238,8 @@ model MineralType{
 
   miningLicenses   MiningLicense[]
   contracts        Contract[]
-        
+  auctions         Auction[]
+
 }
 
 enum MineralCategory {
@@ -224,115 +247,6 @@ enum MineralCategory {
   NONMETALLIC
 }
 
-
-enum TenderType {
-  TENDER
-  CONSULTING
-  AUCTION
-  NOTICE
-  ANNOUNCEMENT
-  OTHER
-}
-
-enum TenderSector {
-  MINING
-  OIL
-  GAS
-  CONSULTING
-  OTHER
-}
-
-enum TenderStatus {
-  OPEN
-  CLOSED
-}
-
-enum TenderActivityAction {
-  VIEWED
-  APPLIED
-  IGNORED
-  ASSIGNED
-  NOTIFIED
-}
-
-enum TenderLanguage {
-  EN
-  PS
-  FA
-}
-
-model Organization {
-  id        Int      @id @default(autoincrement())
-  name      String
-  country   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  tenders Tender[]
-
-  @@map("organizations")
-}
-
-model Tender {
-  id             String        @id @default(uuid())
-  title          String
-  description    String?       @db.Text
-  sourceUrl      String        @unique
-  referenceNo    String?
-  publishDate    DateTime?
-  closingDate    DateTime?
-  sector         TenderSector  @default(OTHER)
-  type           TenderType    @default(TENDER)
-  status         TenderStatus  @default(OPEN)
-  language       TenderLanguage @default(EN)
-  projectName    String?
-  location       String?
-  attachments    Json?
-  priorityScore  Float?
-  organizationId Int?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-
-  organization   Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  tags           TenderTag[]
-  activities     TenderActivity[]
-
-  @@index([status])
-  @@index([closingDate])
-  @@index([type])
-  @@index([sector])
-  @@index([publishDate])
-  @@index([language])
-  @@map("tenders")
-}
-
-model TenderTag {
-  id       Int    @id @default(autoincrement())
-  tenderId String
-  tag      String
-
-  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
-
-  @@index([tenderId])
-  @@index([tag])
-  @@map("tender_tags")
-}
-
-model TenderActivity {
-  id        Int                  @id @default(autoincrement())
-  tenderId  String
-  action    TenderActivityAction
-  userId    Int?
-  notes     String?              @db.Text
-  createdAt DateTime             @default(now())
-
-  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
-
-  @@index([tenderId])
-  @@index([action])
-  @@index([createdAt])
-  @@map("tender_activity")
-}
 
 // ================================================================
 //                EXECUTIVE DASHBOARD & MANUAL KPI MODULE

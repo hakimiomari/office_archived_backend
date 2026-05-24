@@ -89,6 +89,23 @@ export class SeedService {
         group_name: "mineraltype",
         label: "Delete Mineral Type",
       },
+      // Auction
+      {
+        name: "auction.create",
+        group_name: "auction",
+        label: "Create Auction",
+      },
+      { name: "auction.read", group_name: "auction", label: "Read Auction" },
+      {
+        name: "auction.update",
+        group_name: "auction",
+        label: "Update Auction",
+      },
+      {
+        name: "auction.delete",
+        group_name: "auction",
+        label: "Delete Auction",
+      },
       // Report
       { name: "report.view", group_name: "report", label: "View Reports" },
       { name: "report.export", group_name: "report", label: "Export Reports" },
@@ -102,11 +119,6 @@ export class SeedService {
       { name: "role.read", group_name: "role", label: "Read Role" },
       { name: "role.update", group_name: "role", label: "Update Role" },
       { name: "role.delete", group_name: "role", label: "Delete Role" },
-      // Tender Management
-      { name: "tender.create", group_name: "tender", label: "Create Tender" },
-      { name: "tender.read", group_name: "tender", label: "Read Tender" },
-      { name: "tender.update", group_name: "tender", label: "Update Tender" },
-      { name: "tender.delete", group_name: "tender", label: "Delete Tender" },
       // Executive Dashboard
       {
         name: "executive.create",
@@ -270,12 +282,12 @@ export class SeedService {
       "mineraltype.read",
       "mineraltype.update",
       "mineraltype.delete",
+      "auction.create",
+      "auction.read",
+      "auction.update",
+      "auction.delete",
       "report.view",
       "report.export",
-      "tender.create",
-      "tender.read",
-      "tender.update",
-      "tender.delete",
       "executive.read",
       "executive.create",
       "executive.update",
@@ -315,8 +327,8 @@ export class SeedService {
       "company.read",
       "owner.read",
       "mineraltype.read",
+      "auction.read",
       "report.view",
-      "tender.read",
       "executive.read",
       "equipment.read",
       "employee.read",
@@ -357,6 +369,9 @@ export class SeedService {
       "mineraltype.create",
       "mineraltype.read",
       "mineraltype.update",
+      "auction.create",
+      "auction.read",
+      "auction.update",
     ]
       .map((n) => permByName(n))
       .filter(Boolean);
