@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsNotEmpty,
   IsInt,
+  IsDateString,
   Min,
   Max,
 } from 'class-validator';
@@ -64,4 +65,14 @@ export class CreateAuctionDto {
   @Min(0)
   @Max(100)
   royalty?: number;
+
+  @ApiProperty({ example: '2026-05-24', description: 'Auction date' })
+  @IsDateString()
+  auctionDate: string;
+
+  @ApiPropertyOptional({ example: 1, description: 'Province id' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  provinceId?: number;
 }

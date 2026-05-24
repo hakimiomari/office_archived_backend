@@ -29,15 +29,24 @@ export class AuctionsService {
         unitPrice: dto.unitPrice,
         priceCurrency: dto.priceCurrency,
         royalty: dto.royalty,
+        auctionDate: new Date(dto.auctionDate),
+        provinceId: dto.provinceId ?? null,
       },
-      include: { mineralType: true },
+      include: { mineralType: true, province: true },
     });
   }
 
-  async findAll(page = 1, limit = 10, search?: string, mineralTypeId?: string) {
+  async findAll(
+    page = 1,
+    limit = 10,
+    search?: string,
+    mineralTypeId?: string,
+    provinceId?: number,
+  ) {
     const skip = (page - 1) * limit;
     const where: Prisma.AuctionWhereInput = {};
     if (mineralTypeId) where.mieralTypeId = mineralTypeId;
+    if (provinceId) where.provinceId = provinceId;
     if (search) {
       where.OR = [
         { round: { contains: search, mode: "insensitive" as const } },
@@ -55,7 +64,7 @@ export class AuctionsService {
         skip,
         take: limit,
         orderBy: { id: "desc" },
-        include: { mineralType: true },
+        include: { mineralType: true, province: true },
       }),
       this.prisma.auction.count({ where }),
     ]);
@@ -69,7 +78,7 @@ export class AuctionsService {
   async findOne(id: string) {
     const auction = await this.prisma.auction.findUnique({
       where: { id },
-      include: { mineralType: true },
+      include: { mineralType: true, province: true },
     });
     if (!auction) {
       throw new NotFoundException(`Auction with id ${id} not found`);
@@ -90,8 +99,14 @@ export class AuctionsService {
         ...(dto.unitPrice !== undefined && { unitPrice: dto.unitPrice }),
         ...(dto.priceCurrency && { priceCurrency: dto.priceCurrency }),
         ...(dto.royalty !== undefined && { royalty: dto.royalty }),
+        ...(dto.auctionDate && {
+          auctionDate: new Date(dto.auctionDate),
+        }),
+        ...(dto.provinceId !== undefined && {
+          provinceId: dto.provinceId ?? null,
+        }),
       },
-      include: { mineralType: true },
+      include: { mineralType: true, province: true },
     });
   }
 

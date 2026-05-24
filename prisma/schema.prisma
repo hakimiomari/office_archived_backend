@@ -200,16 +200,19 @@ model Contract {
 
 model Auction{
   id            String     @id @default(uuid())
-  mieralTypeId  String     
+  mieralTypeId  String
   round         String?
   mass          String
   unit          MassUnit  @default(Gram)
   unitPrice     String
   priceCurrency Currency  @default(AFN)
   royalty       Int?
+  auctionDate   DateTime
+  provinceId    Int?
 
 
   mineralType     MineralType     @relation(fields: [mieralTypeId],references: [id], onDelete: Cascade)
+  province        Province?       @relation(fields: [provinceId], references: [id], onDelete: SetNull)
 
   @@map("auctions")
 }
@@ -482,6 +485,8 @@ model Employee {
 model Province{
   id             Int                @id @default(autoincrement())
   name String? @unique
+
+  auctions Auction[]
 
   @@map("provinces")
 }

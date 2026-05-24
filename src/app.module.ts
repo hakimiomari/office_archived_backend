@@ -10,6 +10,7 @@ import { ContractsModule } from "./contracts/contracts.module";
 import { CompaniesModule } from "./companies/companies.module";
 import { MineralTypesModule } from "./mineral-types/mineral-types.module";
 import { AuctionsModule } from "./auctions/auctions.module";
+import { ProvincesModule } from "./provinces/provinces.module";
 import { ReportsModule } from "./reports/reports.module";
 import { RolesModule } from "./roles/roles.module";
 import { MinioModule } from "./minio/minio.module";
@@ -40,6 +41,7 @@ import environmentValidation from "./config/environment.validation";
     CompaniesModule,
     MineralTypesModule,
     AuctionsModule,
+    ProvincesModule,
     ReportsModule,
     RolesModule,
     ExecutiveModule,

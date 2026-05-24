@@ -37,17 +37,20 @@ export class AuctionsController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'mineralTypeId', required: false, type: String })
+  @ApiQuery({ name: 'provinceId', required: false, type: Number })
   findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
     @Query('mineralTypeId') mineralTypeId?: string,
+    @Query('provinceId') provinceId?: string,
   ) {
     return this.auctionsService.findAll(
       page ? parseInt(page) : 1,
       limit ? parseInt(limit) : 10,
       search,
       mineralTypeId,
+      provinceId ? parseInt(provinceId) : undefined,
     );
   }
 
