@@ -1,9 +1,8 @@
-import { IsEmail, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, MinLength } from "class-validator";
+import { IsEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, MinLength } from "class-validator";
 
 export enum UserRoleDto {
-  SUPER_ADMIN = "SUPER_ADMIN",
-  COMPANY_ADMIN = "COMPANY_ADMIN",
-  COMPANY_USER = "COMPANY_USER",
+  ADMIN = "ADMIN",
+  USER = "USER",
 }
 
 export class CreateUserDto {
@@ -20,13 +19,8 @@ export class CreateUserDto {
   @IsNumber()
   role: number;
 
-  /** Tenancy role; only SUPER_ADMIN can set this when creating users. */
+  /** App role: ADMIN (full system) or USER (limited by permissions). */
   @IsOptional()
   @IsEnum(UserRoleDto)
   userRole?: UserRoleDto;
-
-  /** Company the user belongs to. Required for non-SUPER_ADMIN users. */
-  @IsOptional()
-  @IsInt()
-  companyId?: number;
 }

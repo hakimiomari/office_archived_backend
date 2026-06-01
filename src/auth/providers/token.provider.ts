@@ -30,8 +30,7 @@ export class TokenProvider {
     email: string,
     roles: string | string[],
     permissions: any[],
-    userRole: 'SUPER_ADMIN' | 'COMPANY_ADMIN' | 'COMPANY_USER' = 'COMPANY_USER',
-    companyId: number | null = null,
+    userRole: 'ADMIN' | 'USER' = 'USER',
   ): Promise<Tokens> {
     const rolesArray = Array.isArray(roles) ? roles : [roles];
     const permissionNames = permissions.map((p) => p.name);
@@ -42,9 +41,7 @@ export class TokenProvider {
       roles: rolesArray,
       role: rolesArray[0], // backward compat
       permissions: permissionNames,
-      // Multi-tenancy claims used by TenantInterceptor + Prisma extension.
       userRole,
-      companyId,
     };
 
     const [access_token, refresh_token] = await Promise.all([
@@ -92,8 +89,7 @@ export class TokenProvider {
         user.email,
         roles,
         uniquePermissions,
-        user.userRole ?? 'COMPANY_USER',
-        user.companyId ?? null,
+        user.userRole ?? 'USER',
       );
 
     response.cookie("refresh_token", new_refresh_token, {

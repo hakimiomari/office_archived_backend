@@ -1,71 +1,56 @@
 import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
-import { tenantSqlFilter } from "./tenant-sql";
 
 /**
- * The single sanctioned entry point for `$queryRaw` / `$executeRaw` in the
- * codebase. The Prisma tenant extension does NOT run on raw SQL, so every
- * raw query must include `WHERE <table>.companyId = …` (or `TRUE` for
- * SUPER_ADMIN reads) — and that's easy to forget.
+ * Single-tenant shim. Originally wrapped raw SQL with a per-request
+ * companyId filter; preserves the original call shape so existing
+ * services keep compiling. The previous API was:
  *
- * This service makes the tenant column a *required argument* and gives the
- * SQL builder a `TENANT_FILTER` Prisma.Sql fragment they must embed in the
- * WHERE clause. A repo lint script (see `scripts/check-raw-sql.sh`) blocks
- * `$queryRaw` / `$executeRaw` from appearing anywhere outside
- * `src/tenant/`, so this is enforced at CI time too.
+ *   tenantQuery.queryRaw('table."companyId"', (TENANT) => Prisma.sql`
+ *     SELECT … WHERE ${TENANT} AND …
+ *   `)
  *
- * Example:
- *   await this.tenantQuery.queryRaw<Row[]>(
- *     'i."companyId"',
- *     (TENANT) => Prisma.sql`
- *       SELECT i.id FROM items i WHERE ${TENANT} AND i."minStock" > 0
- *     `,
- *   );
+ * Callers received a `TENANT` SQL fragment they could splice into a
+ * larger query. After the multi-tenancy removal there is no tenant to
+ * scope to, so `TENANT` is just `TRUE` — a no-op predicate the planner
+ * folds away. The column-name arg is accepted and ignored.
  */
 @Injectable()
 export class TenantQueryService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Empty SQL fragment — no companyId filter to inject. */
+  companyIdSqlFragment(_alias?: string): string {
+    return "";
+  }
+  companyIdSqlParams(): any[] {
+    return [];
+  }
+  scopeWhere<T extends object>(where: T): T {
+    return where;
+  }
+
   /**
-   * Run a tenant-scoped `$queryRaw`. The `column` argument names the tenant
-   * column (e.g. `'i."companyId"'`); pass it through `${TENANT_FILTER}` in
-   * the SQL builder.
+   * Build + execute a `Prisma.sql` query using the live extended client.
+   * `_companyCol` is accepted to match the legacy `(column, builder)`
+   * signature but is ignored — `TENANT` is hard-wired to `TRUE`.
    */
-  async queryRaw<T = unknown>(
-    column: string,
-    build: (TENANT_FILTER: Prisma.Sql) => Prisma.Sql,
+  async queryRaw<T = any>(
+    _companyCol: string,
+    builder: (tenant: Prisma.Sql) => Prisma.Sql,
   ): Promise<T> {
-    const sql = build(tenantSqlFilter(column));
-    return (this.prisma as any).$queryRaw(sql) as Promise<T>;
+    const sql = builder(Prisma.sql`TRUE`);
+    return (this.prisma as any).$queryRaw(sql);
   }
 
-  /** Tx variant — use when inside a `$transaction` callback. */
-  async queryRawTx<T = unknown>(
-    tx: Prisma.TransactionClient,
-    column: string,
-    build: (TENANT_FILTER: Prisma.Sql) => Prisma.Sql,
-  ): Promise<T> {
-    const sql = build(tenantSqlFilter(column));
-    return tx.$queryRaw(sql) as Promise<T>;
-  }
-
-  /** Tenant-scoped `$executeRaw`. Returns the affected row count. */
-  async executeRaw(
-    column: string,
-    build: (TENANT_FILTER: Prisma.Sql) => Prisma.Sql,
-  ): Promise<number> {
-    const sql = build(tenantSqlFilter(column));
-    return (this.prisma as any).$executeRaw(sql) as Promise<number>;
-  }
-
-  /** Tx variant of executeRaw. */
+  /** Transaction-scoped variant. Returns the affected row count. */
   async executeRawTx(
-    tx: Prisma.TransactionClient,
-    column: string,
-    build: (TENANT_FILTER: Prisma.Sql) => Prisma.Sql,
+    tx: any,
+    _companyCol: string,
+    builder: (tenant: Prisma.Sql) => Prisma.Sql,
   ): Promise<number> {
-    const sql = build(tenantSqlFilter(column));
+    const sql = builder(Prisma.sql`TRUE`);
     return tx.$executeRaw(sql);
   }
 }

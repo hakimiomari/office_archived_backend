@@ -16,66 +16,10 @@ datasource db {
 }
 
 enum UserRole {
-  SUPER_ADMIN
-  COMPANY_ADMIN
-  COMPANY_USER
+  ADMIN
+  USER
 }
 
-model Company {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  slug      String?  @unique
-  isActive  Boolean  @default(true)
-  timezone  String?
-  notes     String?  @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  users            User[]
-  items            Item[]
-  warehouses       Warehouse[]
-  inventoryStocks  InventoryStock[]
-  stockMovements   StockMovement[]
-  inventoryBatches InventoryBatch[]
-  alerts           Alert[]
-  stockCounts      StockCount[]
-  stockCountLines  StockCountLine[]
-  categories       Category[]
-  suppliers        Supplier[]
-  purchases        Purchase[]
-  purchaseItems    PurchaseItem[]
-  supplierPayments SupplierPayment[]
-  customers        Customer[]
-  sales            Sale[]
-  saleItems        SaleItem[]
-  payments         Payment[]
-  employees        Employee[]
-  departments      Department[]
-  auditLogs        AuditLog[]
-  accounts         Account[]
-  journalEntries   JournalEntry[]
-  journalLines     JournalLine[]
-  bankAccounts     BankAccount[]
-  bankTransactions BankTransaction[]
-  reconciliations  Reconciliation[]
-
-  @@map("companies")
-}
-
-// ================================================================
-//                          AUDIT LOG
-// Persistent, append-only record of every meaningful action: every
-// write to a tracked tenant model, every login, every SUPER_ADMIN
-// tenant scope change, every cross-tenant write that was blocked.
-//
-// `companyId` is nullable so system-level events (e.g. company
-// creation by a SUPER_ADMIN with no current tenant scope) still get
-// logged.
-//
-// `before` / `after` are JSON snapshots; we only populate them for
-// low-frequency writes (writes to Sale, Customer, Item, etc.) — the
-// hot stock-movement path skips diffs to avoid doubling DB load.
-// ================================================================
 // ================================================================
 //                       ACCOUNTING LAYER (§5.1)
 // Double-entry general ledger. Every business event (sale, purchase,
@@ -94,7 +38,6 @@ enum AccountType {
 
 model Account {
   id        Int         @id @default(autoincrement())
-  companyId Int
   code      String
   name      String
   type      AccountType
@@ -104,16 +47,15 @@ model Account {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
-  company  Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   parent   Account?      @relation("AccountParent", fields: [parentId], references: [id], onDelete: SetNull)
   children Account[]     @relation("AccountParent")
   lines    JournalLine[]
 
   deletedAt DateTime?
 
-  @@unique([companyId, code])
-  @@index([companyId])
-  @@index([companyId, type])
+  @@unique([code])
+
+  @@index([type])
   @@index([parentId])
   @@index([deletedAt])
   @@map("accounts")
@@ -121,7 +63,6 @@ model Account {
 
 model JournalEntry {
   id          Int       @id @default(autoincrement())
-  companyId   Int
   entryNo     String
   date        DateTime
   description String
@@ -133,14 +74,13 @@ model JournalEntry {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  company Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   lines   JournalLine[]
 
   deletedAt DateTime?
 
-  @@unique([companyId, entryNo])
-  @@index([companyId])
-  @@index([companyId, date])
+  @@unique([entryNo])
+
+  @@index([date])
   @@index([sourceType, sourceId])
   @@index([deletedAt])
   @@map("journal_entries")
@@ -150,20 +90,18 @@ model JournalLine {
   id             Int     @id @default(autoincrement())
   journalEntryId Int
   accountId      Int
-  companyId      Int
   debit          Float   @default(0)
   credit         Float   @default(0)
   description    String?
 
   journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   account      Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
-  company      Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   deletedAt DateTime?
 
   @@index([journalEntryId])
   @@index([accountId])
-  @@index([companyId])
+
   @@index([deletedAt])
   @@map("journal_lines")
 }
@@ -196,7 +134,6 @@ enum ReconciliationStatus {
 
 model BankAccount {
   id             Int      @id @default(autoincrement())
-  companyId      Int
   name           String
   accountNumber  String?
   currency       String   @default("USD")
@@ -207,21 +144,19 @@ model BankAccount {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  company         Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   transactions    BankTransaction[]
   reconciliations Reconciliation[]
 
   deletedAt DateTime?
 
-  @@unique([companyId, name])
-  @@index([companyId])
+  @@unique([name])
+
   @@index([deletedAt])
   @@map("bank_accounts")
 }
 
 model BankTransaction {
   id                       Int                      @id @default(autoincrement())
-  companyId                Int
   bankAccountId            Int
   statementDate            DateTime
   direction                BankTransactionDirection
@@ -236,27 +171,24 @@ model BankTransaction {
   matchedBy                String?
   importedAt               DateTime                 @default(now())
 
-  company                Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   bankAccount            BankAccount      @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
   matchedPayment         Payment?         @relation(fields: [matchedPaymentId], references: [id], onDelete: SetNull)
   matchedSupplierPayment SupplierPayment? @relation(fields: [matchedSupplierPaymentId], references: [id], onDelete: SetNull)
 
   deletedAt DateTime?
 
-  @@index([companyId])
   @@index([bankAccountId])
   @@index([statementDate])
   @@index([status])
   @@index([matchedPaymentId])
   @@index([matchedSupplierPaymentId])
-  @@index([companyId, status, statementDate])
+  @@index([status, statementDate])
   @@index([deletedAt])
   @@map("bank_transactions")
 }
 
 model Reconciliation {
   id             Int                  @id @default(autoincrement())
-  companyId      Int
   bankAccountId  Int
   periodStart    DateTime
   periodEnd      DateTime
@@ -269,43 +201,15 @@ model Reconciliation {
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
-  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
   bankAccount BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
 
   deletedAt DateTime?
 
-  @@index([companyId])
   @@index([bankAccountId])
   @@index([status])
   @@index([periodStart, periodEnd])
   @@index([deletedAt])
   @@map("reconciliations")
-}
-
-model AuditLog {
-  id        Int      @id @default(autoincrement())
-  companyId Int?
-  userId    Int?
-  email     String?
-  action    String
-  entity    String?
-  entityId  Int?
-  before    Json?
-  after     Json?
-  ipAddress String?
-  userAgent String?
-  requestId String?
-  notes     String?  @db.Text
-  createdAt DateTime @default(now())
-
-  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@index([companyId, createdAt])
-  @@index([entity, entityId])
-  @@index([userId])
-  @@index([action])
-  @@index([createdAt])
-  @@map("audit_logs")
 }
 
 model User {
@@ -316,8 +220,7 @@ model User {
   googleId        String?      @unique
   profile_picture String?
   isActive        Boolean      @default(true)
-  userRole        UserRole     @default(COMPANY_USER)
-  companyId       Int?
+  userRole        UserRole     @default(USER)
   roles           Role[]       @relation("UserRoles")
   permissions     Permission[]
   created_at      DateTime     @default(now())
@@ -325,7 +228,6 @@ model User {
   created_by      Int?
   updated_by      Int?
 
-  company         Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   created_by_user User?    @relation("UserCreatedBy", fields: [created_by], references: [id])
   updated_by_user User?    @relation("UserUpdatedBy", fields: [updated_by], references: [id])
 
@@ -334,7 +236,6 @@ model User {
 
   created_roles Role[] @relation("CreatedRoles")
 
-  @@index([companyId])
   @@map("users")
 }
 
@@ -427,21 +328,19 @@ model Category {
   slug        String?
   description String?  @db.Text
   parentId    Int?
-  companyId   Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  company  Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   parent   Category?  @relation("CategoryParent", fields: [parentId], references: [id], onDelete: SetNull)
   children Category[] @relation("CategoryParent")
   items    Item[]
 
   deletedAt DateTime?
 
-  @@unique([companyId, parentId, name])
-  @@unique([companyId, slug])
+  @@unique([parentId, name])
+  @@unique([slug])
   @@index([parentId])
-  @@index([companyId])
+
   @@index([deletedAt])
   @@map("categories")
 }
@@ -452,7 +351,6 @@ model Item {
   sku             String?
   category        ItemCategory @default(OTHER)
   categoryId      Int?
-  companyId       Int
   unit            String       @default("pcs")
   description     String?      @db.Text
   minStock        Float        @default(0)
@@ -465,7 +363,6 @@ model Item {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
-  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   categoryRef     Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   stocks          InventoryStock[]
   movements       StockMovement[]
@@ -477,14 +374,13 @@ model Item {
 
   deletedAt DateTime?
 
-  @@unique([companyId, sku])
+  @@unique([sku])
   @@index([category])
   @@index([categoryId])
-  @@index([companyId])
+
   @@index([name])
   @@index([deletedAt])
   // Item-list search + filter sorts by name within the tenant.
-  @@index([companyId, name])
   @@map("items")
 }
 
@@ -492,11 +388,9 @@ model Warehouse {
   id        Int      @id @default(autoincrement())
   name      String
   location  String?
-  companyId Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   stocks          InventoryStock[]
   sourceMovements StockMovement[]  @relation("SourceWarehouse")
   targetMovements StockMovement[]  @relation("TargetWarehouse")
@@ -506,7 +400,6 @@ model Warehouse {
 
   deletedAt DateTime?
 
-  @@index([companyId])
   @@index([deletedAt])
   @@map("warehouses")
 }
@@ -515,12 +408,10 @@ model InventoryStock {
   id          Int      @id @default(autoincrement())
   itemId      Int
   warehouseId Int
-  companyId   Int
   quantity    Float    @default(0)
   version     Int      @default(0)
   updatedAt   DateTime @updatedAt
 
-  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   item      Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
   warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
 
@@ -529,11 +420,10 @@ model InventoryStock {
   @@unique([itemId, warehouseId])
   @@index([itemId])
   @@index([warehouseId])
-  @@index([companyId])
+
   @@index([deletedAt])
   // Tenant-scoped per-item stock aggregates (used in low-stock + dead-stock
   // subqueries) benefit from a companyId-first composite.
-  @@index([companyId, itemId])
   @@map("inventory_stock")
 }
 
@@ -541,7 +431,6 @@ model InventoryBatch {
   id          Int       @id @default(autoincrement())
   itemId      Int
   warehouseId Int
-  companyId   Int
   batchNo     String?
   quantity    Float     @default(0)
   unitCost    Float     @default(0)
@@ -551,7 +440,6 @@ model InventoryBatch {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   item      Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
   warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   purchase  Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
@@ -562,7 +450,7 @@ model InventoryBatch {
   @@index([receivedAt])
   @@index([expiryDate])
   @@index([purchaseId])
-  @@index([companyId])
+
   @@index([deletedAt])
   @@map("inventory_batches")
 }
@@ -570,7 +458,6 @@ model InventoryBatch {
 model StockMovement {
   id                Int                    @id @default(autoincrement())
   itemId            Int
-  companyId         Int
   type              StockMovementType
   quantity          Float
   unitCost          Float?
@@ -585,7 +472,6 @@ model StockMovement {
   notes             String?                @db.Text
   createdAt         DateTime               @default(now())
 
-  company         Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   item            Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
   sourceWarehouse Warehouse? @relation("SourceWarehouse", fields: [sourceWarehouseId], references: [id], onDelete: SetNull)
   targetWarehouse Warehouse? @relation("TargetWarehouse", fields: [targetWarehouseId], references: [id], onDelete: SetNull)
@@ -598,15 +484,14 @@ model StockMovement {
   @@index([createdAt])
   @@index([purchaseId])
   @@index([referenceType, referenceId])
-  @@index([companyId])
+
   @@index([deletedAt])
   // Composite indexes for the heavy raw SQL in inventory reports:
   //  - dead-stock + monthly-usage scans filter by companyId + type + createdAt.
   //  - last-OUT-per-item lookups filter by companyId + itemId + createdAt.
   //  - sale-COGS joins filter by companyId + (referenceType, referenceId).
-  @@index([companyId, type, createdAt])
-  @@index([companyId, itemId, createdAt])
-  @@index([companyId, referenceType, referenceId])
+  @@index([type, createdAt])
+  @@index([itemId, createdAt])
   @@map("stock_movements")
 }
 
@@ -616,7 +501,6 @@ model Alert {
   status       AlertStatus @default(OPEN)
   itemId       Int
   warehouseId  Int?
-  companyId    Int
   message      String      @db.Text
   threshold    Float?
   currentValue Float?
@@ -628,7 +512,6 @@ model Alert {
   /// don't double-notify (§5.3).
   dispatchedAt DateTime?
 
-  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   item      Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
   warehouse Warehouse? @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
 
@@ -639,9 +522,9 @@ model Alert {
   @@index([itemId])
   @@index([warehouseId])
   @@index([createdAt])
-  @@index([companyId])
+
   @@index([deletedAt])
-  @@index([companyId, status, dispatchedAt])
+  @@index([status, dispatchedAt])
   @@map("alerts")
 }
 
@@ -649,7 +532,6 @@ model StockCount {
   id          Int              @id @default(autoincrement())
   reference   String?
   warehouseId Int
-  companyId   Int
   status      StockCountStatus @default(DRAFT)
   notes       String?          @db.Text
   startedAt   DateTime         @default(now())
@@ -658,17 +540,16 @@ model StockCount {
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
-  company   Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   warehouse Warehouse        @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   lines     StockCountLine[]
 
   deletedAt DateTime?
 
-  @@unique([companyId, reference])
+  @@unique([reference])
   @@index([warehouseId])
   @@index([status])
   @@index([startedAt])
-  @@index([companyId])
+
   @@index([deletedAt])
   @@map("stock_counts")
 }
@@ -677,13 +558,11 @@ model StockCountLine {
   id           Int     @id @default(autoincrement())
   stockCountId Int
   itemId       Int
-  companyId    Int
   expectedQty  Float   @default(0)
   countedQty   Float   @default(0)
   variance     Float   @default(0)
   notes        String? @db.Text
 
-  company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   stockCount StockCount @relation(fields: [stockCountId], references: [id], onDelete: Cascade)
   item       Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
@@ -692,7 +571,7 @@ model StockCountLine {
   @@unique([stockCountId, itemId])
   @@index([stockCountId])
   @@index([itemId])
-  @@index([companyId])
+
   @@index([deletedAt])
   @@map("stock_count_lines")
 }
@@ -705,17 +584,14 @@ model Supplier {
   phone     String?
   address   String?
   totalOwed Float    @default(0)
-  companyId Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  company   Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   purchases Purchase[]
   payments  SupplierPayment[]
 
   deletedAt DateTime?
 
-  @@index([companyId])
   @@index([deletedAt])
   @@map("suppliers")
 }
@@ -723,7 +599,6 @@ model Supplier {
 model Purchase {
   id              Int            @id @default(autoincrement())
   supplierId      Int?
-  companyId       Int
   referenceNo     String?
   totalAmount     Float          @default(0)
   paidAmount      Float          @default(0)
@@ -736,7 +611,6 @@ model Purchase {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  company   Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   supplier  Supplier?         @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   items     PurchaseItem[]
   movements StockMovement[]
@@ -749,11 +623,11 @@ model Purchase {
   @@index([status])
   @@index([paymentStatus])
   @@index([purchaseDate])
-  @@index([companyId])
+
   @@index([deletedAt])
   // Sales-report "purchases by period" aggregate + AP dashboard both
   // filter by tenant + status + purchaseDate.
-  @@index([companyId, status, purchaseDate])
+  @@index([status, purchaseDate])
   @@map("purchases")
 }
 
@@ -761,7 +635,6 @@ model SupplierPayment {
   id          Int           @id @default(autoincrement())
   supplierId  Int
   purchaseId  Int?
-  companyId   Int
   amount      Float
   method      PaymentMethod @default(CASH)
   paymentDate DateTime      @default(now())
@@ -770,7 +643,6 @@ model SupplierPayment {
   createdBy   String?
   createdAt   DateTime      @default(now())
 
-  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   supplier         Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   purchase         Purchase?         @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
   bankTransactions BankTransaction[]
@@ -780,7 +652,7 @@ model SupplierPayment {
   @@index([supplierId])
   @@index([purchaseId])
   @@index([paymentDate])
-  @@index([companyId])
+
   @@index([deletedAt])
   @@map("supplier_payments")
 }
@@ -789,11 +661,9 @@ model PurchaseItem {
   id         Int   @id @default(autoincrement())
   purchaseId Int
   itemId     Int
-  companyId  Int
   quantity   Float
   price      Float @default(0)
 
-  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   item     Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
@@ -801,7 +671,7 @@ model PurchaseItem {
 
   @@index([purchaseId])
   @@index([itemId])
-  @@index([companyId])
+
   @@index([deletedAt])
   @@map("purchase_items")
 }
@@ -821,17 +691,15 @@ model Department {
   id          Int      @id @default(autoincrement())
   name        String
   description String?
-  companyId   Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   employees Employee[]
 
   deletedAt DateTime?
 
-  @@unique([companyId, name])
-  @@index([companyId])
+  @@unique([name])
+
   @@index([deletedAt])
   @@map("departments")
 }
@@ -843,7 +711,6 @@ model Employee {
   email          String?
   phone          String?
   departmentId   Int?
-  companyId      Int
   designation    String?
   hireDate       DateTime?
   status         EmployeeStatus @default(ACTIVE)
@@ -854,18 +721,17 @@ model Employee {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
   department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   sales      Sale[]
   payments   Payment[]
 
   deletedAt DateTime?
 
-  @@unique([companyId, email])
+  @@unique([email])
   @@index([status])
   @@index([departmentId])
   @@index([firstName, lastName])
-  @@index([companyId])
+
   @@index([deletedAt])
   @@map("employees")
 }
@@ -899,7 +765,6 @@ model Customer {
   phone       String?
   email       String?
   address     String?
-  companyId   Int
   creditLimit Float    @default(0)
   totalOwed   Float    @default(0)
   notes       String?  @db.Text
@@ -907,17 +772,15 @@ model Customer {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   sales   Sale[]
 
   deletedAt DateTime?
 
   @@index([name])
   @@index([phone])
-  @@index([companyId])
+
   @@index([deletedAt])
   // Customer-list search sorted by createdAt is tenant-scoped.
-  @@index([companyId, name])
   @@map("customers")
 }
 
@@ -927,7 +790,6 @@ model Sale {
   customerId      Int?
   warehouseId     Int
   employeeId      Int?
-  companyId       Int
   subtotal        Float         @default(0)
   discount        Float         @default(0)
   tax             Float         @default(0)
@@ -944,7 +806,6 @@ model Sale {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  company  Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   customer Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
   employee Employee?  @relation(fields: [employeeId], references: [id], onDelete: SetNull)
   items    SaleItem[]
@@ -952,21 +813,20 @@ model Sale {
 
   deletedAt DateTime?
 
-  @@unique([companyId, invoiceNo])
+  @@unique([invoiceNo])
   @@index([invoiceNo])
   @@index([customerId])
   @@index([employeeId])
   @@index([paymentStatus])
   @@index([saleDate])
-  @@index([companyId])
+
   @@index([deletedAt])
   // Composite indexes for hot report paths. Every report filters by
   // tenant first, so leading with companyId lets these indexes also
   // satisfy companyId-only queries via left-prefix scan.
-  @@index([companyId, saleDate])
-  @@index([companyId, paymentStatus, dueDate])
-  @@index([companyId, customerId, saleDate])
-  @@index([companyId, saleStatus, saleDate])
+  @@index([paymentStatus, dueDate])
+  @@index([customerId, saleDate])
+  @@index([saleStatus, saleDate])
   @@map("sales")
 }
 
@@ -974,13 +834,11 @@ model SaleItem {
   id        Int   @id @default(autoincrement())
   saleId    Int
   itemId    Int
-  companyId Int
   quantity  Float
   unitPrice Float @default(0)
   discount  Float @default(0)
   lineTotal Float @default(0)
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
   item    Item    @relation(fields: [itemId], references: [id], onDelete: Restrict)
 
@@ -988,7 +846,7 @@ model SaleItem {
 
   @@index([saleId])
   @@index([itemId])
-  @@index([companyId])
+
   @@index([deletedAt])
   @@map("sale_items")
 }
@@ -996,7 +854,6 @@ model SaleItem {
 model Payment {
   id          Int           @id @default(autoincrement())
   saleId      Int
-  companyId   Int
   amount      Float
   method      PaymentMethod @default(CASH)
   paymentDate DateTime      @default(now())
@@ -1006,7 +863,6 @@ model Payment {
   createdBy   String?
   createdAt   DateTime      @default(now())
 
-  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   sale             Sale              @relation(fields: [saleId], references: [id], onDelete: Cascade)
   employee         Employee?         @relation(fields: [employeeId], references: [id], onDelete: SetNull)
   bankTransactions BankTransaction[]
@@ -1016,10 +872,9 @@ model Payment {
   @@index([saleId])
   @@index([employeeId])
   @@index([paymentDate])
-  @@index([companyId])
+
   @@index([deletedAt])
   // Dashboard "cash received this month / period" aggregates filter
   // by companyId + paymentDate range.
-  @@index([companyId, paymentDate])
   @@map("payments")
 }

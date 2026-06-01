@@ -52,7 +52,6 @@ export class AuthGuard implements CanActivate {
           email: true,
           isActive: true,
           userRole: true,
-          companyId: true,
         },
       });
       if (!fresh) {
@@ -64,9 +63,8 @@ export class AuthGuard implements CanActivate {
 
       request["user"] = {
         ...payload,
-        // Always trust the DB over the JWT for tenancy claims.
+        // Always trust the DB over the JWT for the role.
         userRole: fresh.userRole,
-        companyId: fresh.companyId,
         email: fresh.email,
       };
       return true;

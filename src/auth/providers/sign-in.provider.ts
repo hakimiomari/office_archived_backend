@@ -52,8 +52,7 @@ export class SignInProvider {
       user.email,
       roles,
       uniquePermissions,
-      user.userRole ?? "COMPANY_USER",
-      user.companyId ?? null,
+      user.userRole ?? "USER",
     );
     response.cookie("refresh_token", refresh_token, {
       httpOnly: true,
