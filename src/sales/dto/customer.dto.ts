@@ -41,6 +41,22 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  /**
+   * SUPER_ADMIN only — explicit target company. Ignored (silently) for any
+   * other role; their tenant comes from the JWT. Required when a SUPER_ADMIN
+   * is unscoped (hasn't selected a company in the CompanySwitcher) since
+   * the server has no other way to know which tenant the customer belongs to.
+   */
+  @ApiProperty({
+    required: false,
+    description: 'SUPER_ADMIN only: target company id',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  companyId?: number;
 }
 
 export class UpdateCustomerDto extends PartialType(CreateCustomerDto) {}
