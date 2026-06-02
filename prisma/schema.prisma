@@ -272,15 +272,6 @@ model Permission {
 //                     INVENTORY MANAGEMENT MODULE
 // ================================================================
 
-enum ItemCategory {
-  OFFICE_SUPPLIES
-  IT_EQUIPMENT
-  PROJECT_MATERIALS
-  CONSUMABLES
-  ASSETS
-  OTHER
-}
-
 enum StockMovementType {
   IN
   OUT
@@ -322,35 +313,10 @@ enum StockCountStatus {
   CANCELLED
 }
 
-model Category {
-  id          Int      @id @default(autoincrement())
-  name        String
-  slug        String?
-  description String?  @db.Text
-  parentId    Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  parent   Category?  @relation("CategoryParent", fields: [parentId], references: [id], onDelete: SetNull)
-  children Category[] @relation("CategoryParent")
-  items    Item[]
-
-  deletedAt DateTime?
-
-  @@unique([parentId, name])
-  @@unique([slug])
-  @@index([parentId])
-
-  @@index([deletedAt])
-  @@map("categories")
-}
-
 model Item {
   id              Int          @id @default(autoincrement())
   name            String
   sku             String?
-  category        ItemCategory @default(OTHER)
-  categoryId      Int?
   unit            String       @default("pcs")
   description     String?      @db.Text
   minStock        Float        @default(0)
@@ -363,7 +329,6 @@ model Item {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
-  categoryRef     Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   stocks          InventoryStock[]
   movements       StockMovement[]
   purchaseItems   PurchaseItem[]
@@ -375,9 +340,6 @@ model Item {
   deletedAt DateTime?
 
   @@unique([sku])
-  @@index([category])
-  @@index([categoryId])
-
   @@index([name])
   @@index([deletedAt])
   // Item-list search + filter sorts by name within the tenant.

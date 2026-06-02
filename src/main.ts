@@ -1,7 +1,7 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { ValidationPipe } from "@nestjs/common";
-import * as cookieParser from "cookie-parser";
+import cookieParser from "cookie-parser";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 
 async function bootstrap() {
@@ -11,15 +11,15 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-    })
+    }),
   );
   app.use(cookieParser());
   app.enableCors({
     credentials: true,
     origin: (origin, callback) => {
       const allowedOrigins = [
-        "http://localhost:3001",
-        "http://localhost:3000",
+        "http://localhost:4001",
+        "http://localhost:4000",
         "http://localhost:8001",
       ];
       if (allowedOrigins.includes(origin) || !origin) {

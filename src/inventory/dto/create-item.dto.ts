@@ -1,6 +1,5 @@
 import {
   IsString,
-  IsEnum,
   IsOptional,
   IsNotEmpty,
   IsNumber,
@@ -8,15 +7,6 @@ import {
   Min,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-
-export enum ItemCategory {
-  OFFICE_SUPPLIES = 'OFFICE_SUPPLIES',
-  IT_EQUIPMENT = 'IT_EQUIPMENT',
-  PROJECT_MATERIALS = 'PROJECT_MATERIALS',
-  CONSUMABLES = 'CONSUMABLES',
-  ASSETS = 'ASSETS',
-  OTHER = 'OTHER',
-}
 
 export class CreateItemDto {
   @ApiProperty({ example: 'A4 Paper' })
@@ -28,16 +18,6 @@ export class CreateItemDto {
   @IsOptional()
   @IsString()
   sku?: string;
-
-  @ApiProperty({ enum: ItemCategory, default: ItemCategory.OTHER })
-  @IsOptional()
-  @IsEnum(ItemCategory)
-  category?: ItemCategory;
-
-  @ApiProperty({ required: false, description: 'FK to Category (hierarchy)' })
-  @IsOptional()
-  @IsInt()
-  categoryId?: number;
 
   @ApiProperty({ example: 'pcs', default: 'pcs' })
   @IsOptional()

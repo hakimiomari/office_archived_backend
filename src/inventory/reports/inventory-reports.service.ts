@@ -68,7 +68,6 @@ export class InventoryReportsService {
       name: i.name,
       sku: i.sku,
       unit: i.unit,
-      category: i.category,
       minStock: i.minStock,
       totalStock: i.stocks.reduce((sum, s) => sum + s.quantity, 0),
     }));

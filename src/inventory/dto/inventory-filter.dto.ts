@@ -7,7 +7,6 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { ItemCategory } from './create-item.dto';
 import { StockMovementType } from './stock-movement.dto';
 import { PurchaseStatus } from './purchase.dto';
 
@@ -33,11 +32,6 @@ export class PaginationDto {
 }
 
 export class ItemFilterDto extends PaginationDto {
-  @ApiPropertyOptional({ enum: ItemCategory })
-  @IsOptional()
-  @IsEnum(ItemCategory)
-  category?: ItemCategory;
-
   @ApiPropertyOptional({ description: 'Only items that are below their minStock' })
   @IsOptional()
   @Type(() => Boolean)

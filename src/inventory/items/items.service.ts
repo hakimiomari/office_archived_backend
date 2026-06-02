@@ -53,8 +53,6 @@ export class ItemsService {
         ],
       });
     }
-    if (filters.category) AND.push({ category: filters.category });
-
     if (AND.length > 0) where.AND = AND;
 
     const [items, total] = await Promise.all([
