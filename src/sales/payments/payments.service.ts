@@ -51,7 +51,6 @@ export class PaymentsService {
           paymentDate: dto.paymentDate ? new Date(dto.paymentDate) : new Date(),
           referenceNo: dto.referenceNo,
           notes: dto.notes,
-          employeeId: dto.employeeId,
           createdBy: userId,
         }),
       });

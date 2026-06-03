@@ -117,7 +117,6 @@ export class InvoicesService {
           invoiceNo,
           customerId: dto.customerId,
           warehouseId: dto.warehouseId,
-          employeeId: dto.employeeId,
           subtotal,
           discount,
           tax,
@@ -198,7 +197,6 @@ export class InvoicesService {
             amount: paidAmount,
             method: dto.paymentMethod ?? 'CASH',
             paymentDate: dto.saleDate ? new Date(dto.saleDate) : new Date(),
-            employeeId: dto.employeeId,
             createdBy: userId,
           }),
         });
@@ -293,7 +291,6 @@ export class InvoicesService {
       where: { id },
       include: {
         customer: true,
-        employee: true,
         items: { include: { item: true } },
         payments: { orderBy: { paymentDate: 'desc' } },
       },

@@ -71,12 +71,6 @@ export class CreateSaleDto {
   @IsInt()
   warehouseId: number;
 
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  employeeId?: number;
-
   @ApiProperty({ type: [SaleLineItemDto] })
   @IsArray()
   @ArrayMinSize(1)

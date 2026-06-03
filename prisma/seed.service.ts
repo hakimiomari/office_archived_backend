@@ -28,15 +28,6 @@ export class SeedService {
       { name: 'inventory.update', group_name: 'inventory', label: 'Update Inventory' },
       { name: 'inventory.delete', group_name: 'inventory', label: 'Delete Inventory' },
       { name: 'inventory.movement', group_name: 'inventory', label: 'Perform Stock Movements' },
-      // Employee / HR Management
-      { name: 'employee.create', group_name: 'employee', label: 'Create Employee' },
-      { name: 'employee.read', group_name: 'employee', label: 'Read Employee' },
-      { name: 'employee.update', group_name: 'employee', label: 'Update Employee' },
-      { name: 'employee.delete', group_name: 'employee', label: 'Delete Employee' },
-      { name: 'department.create', group_name: 'employee', label: 'Create Department' },
-      { name: 'department.read', group_name: 'employee', label: 'Read Department' },
-      { name: 'department.update', group_name: 'employee', label: 'Update Department' },
-      { name: 'department.delete', group_name: 'employee', label: 'Delete Department' },
       // Sales / Billing
       { name: 'sale.create', group_name: 'sales', label: 'Create Sale' },
       { name: 'sale.read', group_name: 'sales', label: 'Read Sale' },
@@ -103,11 +94,9 @@ export class SeedService {
       },
     });
 
-    // Manager → Manage inventory + employees + sales, no user mgmt
+    // Manager → Manage inventory + sales, no user mgmt
     const managerPerms = [
       'inventory.create', 'inventory.read', 'inventory.update', 'inventory.delete', 'inventory.movement',
-      'employee.create', 'employee.read', 'employee.update',
-      'department.create', 'department.read', 'department.update',
       'sale.create', 'sale.read', 'sale.update',
       'customer.create', 'customer.read', 'customer.update',
       'payment.create', 'payment.read',
@@ -116,12 +105,12 @@ export class SeedService {
     await this.prismaService.role.upsert({
       where: { name: 'manager' },
       update: {
-        description: 'Manage inventory and employees',
+        description: 'Manage inventory and sales',
         permissions: { set: managerPerms.map((p) => ({ id: p!.id })) },
       },
       create: {
         name: 'manager',
-        description: 'Manage inventory and employees',
+        description: 'Manage inventory and sales',
         created_by: adminUser.id,
         permissions: { connect: managerPerms.map((p) => ({ id: p!.id })) },
       },
@@ -129,7 +118,7 @@ export class SeedService {
 
     // Viewer → Read-only
     const viewerPerms = [
-      'inventory.read', 'employee.read', 'department.read',
+      'inventory.read',
       'sale.read', 'customer.read', 'payment.read',
     ].map((n) => permByName(n)).filter(Boolean);
 

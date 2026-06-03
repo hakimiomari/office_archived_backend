@@ -44,12 +44,6 @@ export class CreatePaymentDto {
   @IsOptional()
   @IsString()
   notes?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  employeeId?: number;
 }
 
 export class PaymentFilterDto {

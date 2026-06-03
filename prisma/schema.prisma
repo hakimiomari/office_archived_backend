@@ -639,66 +639,6 @@ model PurchaseItem {
 }
 
 // ================================================================
-//                  EMPLOYEE (HR) MODULE
-// ================================================================
-
-enum EmployeeStatus {
-  ACTIVE
-  INACTIVE
-  ON_LEAVE
-  TERMINATED
-}
-
-model Department {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  employees Employee[]
-
-  deletedAt DateTime?
-
-  @@unique([name])
-
-  @@index([deletedAt])
-  @@map("departments")
-}
-
-model Employee {
-  id             Int            @id @default(autoincrement())
-  firstName      String
-  lastName       String
-  email          String?
-  phone          String?
-  departmentId   Int?
-  designation    String?
-  hireDate       DateTime?
-  status         EmployeeStatus @default(ACTIVE)
-  profilePicture String?
-  address        String?
-  notes          String?        @db.Text
-  createdBy      String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-
-  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  sales      Sale[]
-  payments   Payment[]
-
-  deletedAt DateTime?
-
-  @@unique([email])
-  @@index([status])
-  @@index([departmentId])
-  @@index([firstName, lastName])
-
-  @@index([deletedAt])
-  @@map("employees")
-}
-
-// ================================================================
 //             SALES / BILLING / PAYMENTS MODULE
 // ================================================================
 
@@ -751,7 +691,6 @@ model Sale {
   invoiceNo       String
   customerId      Int?
   warehouseId     Int
-  employeeId      Int?
   subtotal        Float         @default(0)
   discount        Float         @default(0)
   tax             Float         @default(0)
@@ -769,7 +708,6 @@ model Sale {
   updatedAt       DateTime      @updatedAt
 
   customer Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  employee Employee?  @relation(fields: [employeeId], references: [id], onDelete: SetNull)
   items    SaleItem[]
   payments Payment[]
 
@@ -778,7 +716,6 @@ model Sale {
   @@unique([invoiceNo])
   @@index([invoiceNo])
   @@index([customerId])
-  @@index([employeeId])
   @@index([paymentStatus])
   @@index([saleDate])
 
@@ -821,18 +758,15 @@ model Payment {
   paymentDate DateTime      @default(now())
   referenceNo String?
   notes       String?       @db.Text
-  employeeId  Int?
   createdBy   String?
   createdAt   DateTime      @default(now())
 
   sale             Sale              @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  employee         Employee?         @relation(fields: [employeeId], references: [id], onDelete: SetNull)
   bankTransactions BankTransaction[]
 
   deletedAt DateTime?
 
   @@index([saleId])
-  @@index([employeeId])
   @@index([paymentDate])
 
   @@index([deletedAt])

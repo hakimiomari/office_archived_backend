@@ -8,7 +8,6 @@ import { UserModule } from "./users/users.module";
 import { RolesModule } from "./roles/roles.module";
 import { MinioModule } from "./minio/minio.module";
 import { InventoryModule } from "./inventory/inventory.module";
-import { EmployeesModule } from "./employees/employees.module";
 import { SalesModule } from "./sales/sales.module";
 import { StockCountsModule } from "./stock-counts/stock-counts.module";
 import { AlertsModule } from "./alerts/alerts.module";
@@ -42,7 +41,6 @@ import environmentValidation from "./config/environment.validation";
     UserModule,
     RolesModule,
     InventoryModule,
-    EmployeesModule,
     SalesModule,
     StockCountsModule,
     AlertsModule,
