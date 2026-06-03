@@ -68,8 +68,7 @@ export class SeedService {
         name: 'Kamranullah Hakimi',
         email: 'hakimikamranullah@gmail.com',
         password: hashPassword,
-        profile_picture:
-          'https://avatars.githubusercontent.com/u/101364769?v=4',
+        profile_picture: null,
         userRole: 'ADMIN',
       },
     });

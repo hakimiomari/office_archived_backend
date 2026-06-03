@@ -25,9 +25,8 @@ import {
  *     `[req:<id>][company:<id>]` prefix from §1.4, making it easy to
  *     trace back to the request that emitted the event.
  *
- * Real listeners — accounting ledger postings (§5.1), bank reconciliation
- * (§5.2), notification dispatch — will follow the same shape but do more
- * than log.
+ * Real listeners (notification dispatch, future analytics) follow the
+ * same shape but do more than log.
  */
 @Injectable()
 export class EventLoggerListener {

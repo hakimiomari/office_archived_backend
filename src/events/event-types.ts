@@ -14,10 +14,8 @@
  *
  * Most listeners today are stubs (audit logs are already covered by the
  * Prisma extension in §3.2). The producer-side emits exist so future
- * consumers — accounting ledger postings (§5.1), bank reconciliation
- * (§5.2), notification dispatch (email/Slack/webhook) — can be added
- * without touching the write paths in `InvoicesService`, `PaymentsService`,
- * etc.
+ * consumers can be added without touching the write paths in
+ * `InvoicesService`, `PaymentsService`, etc.
  */
 
 export const EVENTS = {
@@ -95,8 +93,7 @@ export interface PurchaseReceivedPayload extends BaseEventPayload {
   purchaseId: number;
   supplierId: number | null;
   totalAmount: number;
-  /** Cash paid at receive time. Drives the Cash vs AP split in the
-   *  accounting listener. */
+  /** Cash paid at receive time. */
   paidAmount: number;
   /** Outstanding supplier liability. `totalAmount = paidAmount + remainingAmount`. */
   remainingAmount: number;

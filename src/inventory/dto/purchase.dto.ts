@@ -88,14 +88,6 @@ export class CreatePurchaseDto {
 
 export class UpdatePurchaseDto extends PartialType(CreatePurchaseDto) {}
 
-export enum SupplierPaymentMethod {
-  CASH = 'CASH',
-  BANK = 'BANK',
-  MOBILE = 'MOBILE',
-  CREDIT = 'CREDIT',
-  OTHER = 'OTHER',
-}
-
 export class CreateSupplierPaymentDto {
   @ApiProperty()
   @IsInt()
@@ -110,11 +102,6 @@ export class CreateSupplierPaymentDto {
   @IsNumber()
   @Min(0.01)
   amount: number;
-
-  @ApiProperty({ enum: SupplierPaymentMethod, default: SupplierPaymentMethod.CASH })
-  @IsOptional()
-  @IsEnum(SupplierPaymentMethod)
-  method?: SupplierPaymentMethod;
 
   @ApiProperty({ required: false })
   @IsOptional()

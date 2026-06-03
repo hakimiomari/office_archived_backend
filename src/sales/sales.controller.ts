@@ -204,7 +204,6 @@ export class SalesController {
       payments: data.payments.map((p) => ({
         paymentDate: p.paymentDate,
         amount: p.amount,
-        method: p.method,
         invoiceNo: p.invoiceNo,
         referenceNo: p.referenceNo,
       })),

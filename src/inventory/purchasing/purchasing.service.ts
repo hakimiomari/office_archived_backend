@@ -87,7 +87,6 @@ export class PurchasingService {
             supplierId: dto.supplierId!,
             purchaseId: purchase.id,
             amount: paidAmount,
-            method: 'CASH',
             paymentDate: dto.purchaseDate
               ? new Date(dto.purchaseDate)
               : new Date(),
@@ -343,7 +342,6 @@ export class PurchasingService {
           supplierId: dto.supplierId,
           purchaseId: dto.purchaseId,
           amount: dto.amount,
-          method: dto.method ?? 'CASH',
           paymentDate: dto.paymentDate ? new Date(dto.paymentDate) : new Date(),
           referenceNo: dto.referenceNo,
           notes: dto.notes,

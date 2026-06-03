@@ -20,204 +20,11 @@ enum UserRole {
   USER
 }
 
-// ================================================================
-//                       ACCOUNTING LAYER (§5.1)
-// Double-entry general ledger. Every business event (sale, purchase,
-// payment) emits a balanced `JournalEntry` whose `JournalLine` rows
-// sum (Σ debits = Σ credits). Reports (P&L, balance sheet, trial
-// balance) are then "select sum(debit) - sum(credit) from
-// journal_lines where accountId = ..." aggregates.
-// ================================================================
-enum AccountType {
-  ASSET
-  LIABILITY
-  EQUITY
-  REVENUE
-  EXPENSE
-}
-
-model Account {
-  id        Int         @id @default(autoincrement())
-  code      String
-  name      String
-  type      AccountType
-  parentId  Int?
-  isActive  Boolean     @default(true)
-  notes     String?     @db.Text
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-
-  parent   Account?      @relation("AccountParent", fields: [parentId], references: [id], onDelete: SetNull)
-  children Account[]     @relation("AccountParent")
-  lines    JournalLine[]
-
-  deletedAt DateTime?
-
-  @@unique([code])
-
-  @@index([type])
-  @@index([parentId])
-  @@index([deletedAt])
-  @@map("accounts")
-}
-
-model JournalEntry {
-  id          Int       @id @default(autoincrement())
-  entryNo     String
-  date        DateTime
-  description String
-  sourceType  String?
-  sourceId    Int?
-  isLocked    Boolean   @default(false)
-  lockedAt    DateTime?
-  createdBy   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  lines   JournalLine[]
-
-  deletedAt DateTime?
-
-  @@unique([entryNo])
-
-  @@index([date])
-  @@index([sourceType, sourceId])
-  @@index([deletedAt])
-  @@map("journal_entries")
-}
-
-model JournalLine {
-  id             Int     @id @default(autoincrement())
-  journalEntryId Int
-  accountId      Int
-  debit          Float   @default(0)
-  credit         Float   @default(0)
-  description    String?
-
-  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
-  account      Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
-
-  deletedAt DateTime?
-
-  @@index([journalEntryId])
-  @@index([accountId])
-
-  @@index([deletedAt])
-  @@map("journal_lines")
-}
-
-// ================================================================
-//                  BANK RECONCILIATION MODULE (§5.2)
-// Workflow:
-//   1. Operator imports a bank statement → creates BankTransaction rows.
-//   2. Operator (or scheduled job) runs auto-match: link bank rows to
-//      Payment (incoming) / SupplierPayment (outgoing) by amount +
-//      date window + reference.
-//   3. Unmatched rows go to a manual matcher UI.
-//   4. Operator closes the reconciliation for the period, locking it.
-// ================================================================
-enum BankTransactionDirection {
-  CREDIT // money INTO the bank account
-  DEBIT  // money OUT of the bank account
-}
-
-enum BankTransactionStatus {
-  UNMATCHED
-  MATCHED
-  IGNORED
-}
-
-enum ReconciliationStatus {
-  OPEN
-  COMPLETED
-}
-
-model BankAccount {
-  id             Int      @id @default(autoincrement())
-  name           String
-  accountNumber  String?
-  currency       String   @default("USD")
-  provider       String?
-  openingBalance Float    @default(0)
-  notes          String?  @db.Text
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  transactions    BankTransaction[]
-  reconciliations Reconciliation[]
-
-  deletedAt DateTime?
-
-  @@unique([name])
-
-  @@index([deletedAt])
-  @@map("bank_accounts")
-}
-
-model BankTransaction {
-  id                       Int                      @id @default(autoincrement())
-  bankAccountId            Int
-  statementDate            DateTime
-  direction                BankTransactionDirection
-  amount                   Float
-  description              String?
-  reference                String?
-  raw                      Json?
-  status                   BankTransactionStatus    @default(UNMATCHED)
-  matchedPaymentId         Int?
-  matchedSupplierPaymentId Int?
-  matchedAt                DateTime?
-  matchedBy                String?
-  importedAt               DateTime                 @default(now())
-
-  bankAccount            BankAccount      @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
-  matchedPayment         Payment?         @relation(fields: [matchedPaymentId], references: [id], onDelete: SetNull)
-  matchedSupplierPayment SupplierPayment? @relation(fields: [matchedSupplierPaymentId], references: [id], onDelete: SetNull)
-
-  deletedAt DateTime?
-
-  @@index([bankAccountId])
-  @@index([statementDate])
-  @@index([status])
-  @@index([matchedPaymentId])
-  @@index([matchedSupplierPaymentId])
-  @@index([status, statementDate])
-  @@index([deletedAt])
-  @@map("bank_transactions")
-}
-
-model Reconciliation {
-  id             Int                  @id @default(autoincrement())
-  bankAccountId  Int
-  periodStart    DateTime
-  periodEnd      DateTime
-  status         ReconciliationStatus @default(OPEN)
-  openingBalance Float
-  closingBalance Float
-  notes          String?              @db.Text
-  createdBy      String?
-  completedAt    DateTime?
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-
-  bankAccount BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
-
-  deletedAt DateTime?
-
-  @@index([bankAccountId])
-  @@index([status])
-  @@index([periodStart, periodEnd])
-  @@index([deletedAt])
-  @@map("reconciliations")
-}
-
 model User {
   id              Int          @id @default(autoincrement())
   name            String
   email           String       @unique
-  password        String?
-  googleId        String?      @unique
+  password        String
   profile_picture String?
   isActive        Boolean      @default(true)
   userRole        UserRole     @default(USER)
@@ -598,7 +405,6 @@ model SupplierPayment {
   supplierId  Int
   purchaseId  Int?
   amount      Float
-  method      PaymentMethod @default(CASH)
   paymentDate DateTime      @default(now())
   referenceNo String?
   notes       String?       @db.Text
@@ -607,7 +413,6 @@ model SupplierPayment {
 
   supplier         Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   purchase         Purchase?         @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
-  bankTransactions BankTransaction[]
 
   deletedAt DateTime?
 
@@ -646,14 +451,6 @@ enum PaymentStatus {
   PAID
   PARTIAL
   UNPAID
-}
-
-enum PaymentMethod {
-  CASH
-  BANK
-  MOBILE
-  CREDIT
-  OTHER
 }
 
 enum SaleStatus {
@@ -698,7 +495,6 @@ model Sale {
   paidAmount      Float         @default(0)
   remainingAmount Float         @default(0)
   paymentStatus   PaymentStatus @default(UNPAID)
-  paymentMethod   PaymentMethod @default(CASH)
   saleStatus      SaleStatus    @default(COMPLETED)
   saleDate        DateTime      @default(now())
   dueDate         DateTime?
@@ -754,7 +550,6 @@ model Payment {
   id          Int           @id @default(autoincrement())
   saleId      Int
   amount      Float
-  method      PaymentMethod @default(CASH)
   paymentDate DateTime      @default(now())
   referenceNo String?
   notes       String?       @db.Text
@@ -762,7 +557,6 @@ model Payment {
   createdAt   DateTime      @default(now())
 
   sale             Sale              @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  bankTransactions BankTransaction[]
 
   deletedAt DateTime?
 

@@ -10,9 +10,6 @@ import {
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { PaymentMethod } from './sale.dto';
-
-export { PaymentMethod } from './sale.dto';
 
 export class CreatePaymentDto {
   @ApiProperty()
@@ -24,11 +21,6 @@ export class CreatePaymentDto {
   @IsNumber()
   @Min(0.01)
   amount: number;
-
-  @ApiProperty({ enum: PaymentMethod, default: PaymentMethod.CASH })
-  @IsOptional()
-  @IsEnum(PaymentMethod)
-  method?: PaymentMethod;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -66,11 +58,6 @@ export class PaymentFilterDto {
   @Type(() => Number)
   @IsInt()
   saleId?: number;
-
-  @ApiProperty({ enum: PaymentMethod, required: false })
-  @IsOptional()
-  @IsEnum(PaymentMethod)
-  method?: PaymentMethod;
 
   @ApiProperty({ required: false })
   @IsOptional()

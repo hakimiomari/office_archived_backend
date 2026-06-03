@@ -55,7 +55,6 @@ type CustomerReportInput = {
   payments: {
     paymentDate: Date;
     amount: number;
-    method: string;
     invoiceNo: string | null;
     referenceNo: string | null;
   }[];
@@ -438,17 +437,15 @@ export class InvoicePdfService {
     const payTop = doc.y;
     const payCols = {
       date: 50,
-      invoice: 150,
-      amount: 260,
-      method: 350,
-      ref: 440,
+      invoice: 170,
+      amount: 300,
+      ref: 410,
     };
 
     doc.fontSize(9).fillColor('#111').font('Helvetica-Bold');
     doc.text('Date', payCols.date, payTop);
     doc.text('Invoice #', payCols.invoice, payTop);
     doc.text('Amount', payCols.amount, payTop, { width: 80, align: 'right' });
-    doc.text('Method', payCols.method, payTop);
     doc.text('Reference', payCols.ref, payTop);
     doc
       .moveTo(50, payTop + 14)
@@ -480,7 +477,6 @@ export class InvoicePdfService {
           align: 'right',
         });
         doc.fillColor('#333');
-        doc.text(p.method, payCols.method, y, { width: 80 });
         doc.text(p.referenceNo || '—', payCols.ref, y, { width: 100 });
         y += 16;
       }

@@ -47,7 +47,6 @@ export class PaymentsService {
         data: tenantCreateStrict<Prisma.PaymentUncheckedCreateInput>({
           saleId: dto.saleId,
           amount: dto.amount,
-          method: dto.method ?? 'CASH',
           paymentDate: dto.paymentDate ? new Date(dto.paymentDate) : new Date(),
           referenceNo: dto.referenceNo,
           notes: dto.notes,
@@ -103,7 +102,6 @@ export class PaymentsService {
 
     const where: Prisma.PaymentWhereInput = {};
     if (filters.saleId) where.saleId = filters.saleId;
-    if (filters.method) where.method = filters.method;
     if (filters.from || filters.to) {
       where.paymentDate = {
         ...(filters.from && { gte: new Date(filters.from) }),

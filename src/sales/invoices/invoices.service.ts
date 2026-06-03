@@ -124,7 +124,6 @@ export class InvoicesService {
           paidAmount,
           remainingAmount,
           paymentStatus,
-          paymentMethod: dto.paymentMethod ?? 'CASH',
           saleStatus: 'COMPLETED',
           saleDate: dto.saleDate ? new Date(dto.saleDate) : new Date(),
           dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
@@ -195,7 +194,6 @@ export class InvoicesService {
           data: tenantCreate<Prisma.PaymentUncheckedCreateInput>({
             saleId: sale.id,
             amount: paidAmount,
-            method: dto.paymentMethod ?? 'CASH',
             paymentDate: dto.saleDate ? new Date(dto.saleDate) : new Date(),
             createdBy: userId,
           }),
@@ -212,8 +210,8 @@ export class InvoicesService {
 
       return sale;
     }).then((sale) => {
-      // Emit AFTER the transaction commits so listeners (ledger postings,
-      // notifications) can't observe a half-committed write.
+      // Emit AFTER the transaction commits so listeners can't observe
+      // a half-committed write.
       const companyId = effectiveCompanyId();
       if (companyId != null) {
         this.events.emit(EVENTS.SALE_CREATED, {

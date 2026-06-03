@@ -20,14 +20,6 @@ export enum PaymentStatus {
   UNPAID = 'UNPAID',
 }
 
-export enum PaymentMethod {
-  CASH = 'CASH',
-  BANK = 'BANK',
-  MOBILE = 'MOBILE',
-  CREDIT = 'CREDIT',
-  OTHER = 'OTHER',
-}
-
 export enum SaleStatus {
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
@@ -95,11 +87,6 @@ export class CreateSaleDto {
   @IsNumber()
   @Min(0)
   paidAmount?: number;
-
-  @ApiProperty({ enum: PaymentMethod, default: PaymentMethod.CASH })
-  @IsOptional()
-  @IsEnum(PaymentMethod)
-  paymentMethod?: PaymentMethod;
 
   @ApiProperty({ required: false, example: '2026-05-01' })
   @IsOptional()

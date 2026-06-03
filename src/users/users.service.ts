@@ -10,9 +10,6 @@ import { UpdateUserDto } from './dto/UpdateUserDto.dto';
 import { ChangePasswordDto } from './dto/ChangePasswordDto.dto';
 import { CreateUserProvider } from './providers/create-user.provider';
 import { FindOneUserByEmailProvider } from './providers/find-one-user-by-email.provider';
-import { FindOneByGoogleIdProvider } from './providers/find-one-by-google-id.provider';
-import { CrcreateGoogleUserProvider } from './providers/crcreate-google-user.provider';
-import { GoogleUserInterface } from './interfaces/google-user.interface';
 import { HashingProvider } from 'src/auth/providers/hashing.provider';
 import { MinioService } from 'src/minio/minio.service';
 // Single-tenant: no per-company scoping required when listing users.
@@ -23,8 +20,6 @@ export class UserService {
     private readonly prismaService: PrismaService,
     private readonly createUserProvider: CreateUserProvider,
     private readonly findOneUserByEmailProvider: FindOneUserByEmailProvider,
-    private readonly findOneByGoogleIdProvider: FindOneByGoogleIdProvider,
-    private readonly crcreateGoogleUserProvider: CrcreateGoogleUserProvider,
     private readonly hashingProvider: HashingProvider,
     private readonly minioService: MinioService,
   ) {}
@@ -58,7 +53,6 @@ export class UserService {
           name: true,
           email: true,
           profile_picture: true,
-          googleId: true,
           userRole: true,
           created_at: true,
           updated_at: true,
@@ -93,7 +87,6 @@ export class UserService {
         name: true,
         email: true,
         profile_picture: true,
-        googleId: true,
         created_at: true,
         updated_at: true,
         roles: {
@@ -170,11 +163,6 @@ export class UserService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    if (!user.password) {
-      throw new BadRequestException(
-        'Cannot change password for Google-authenticated accounts',
-      );
-    }
 
     const isMatch = await this.hashingProvider.verifyPassword(
       dto.currentPassword,
@@ -220,7 +208,6 @@ export class UserService {
         name: true,
         email: true,
         profile_picture: true,
-        googleId: true,
         userRole: true,
         created_at: true,
         updated_at: true,
@@ -259,13 +246,5 @@ export class UserService {
 
   async findOneByEmail(email: string) {
     return await this.findOneUserByEmailProvider.findOneUserByEmail(email);
-  }
-
-  async findOneByGoogleId(googleId: any) {
-    return await this.findOneByGoogleIdProvider.findOneByGoogleId(googleId);
-  }
-
-  async createGoogleUser(googleUser: GoogleUserInterface) {
-    return await this.crcreateGoogleUserProvider.createGoogleUser(googleUser);
   }
 }

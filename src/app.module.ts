@@ -11,8 +11,6 @@ import { InventoryModule } from "./inventory/inventory.module";
 import { SalesModule } from "./sales/sales.module";
 import { StockCountsModule } from "./stock-counts/stock-counts.module";
 import { AlertsModule } from "./alerts/alerts.module";
-import { AccountingModule } from "./accounting/accounting.module";
-import { BankingModule } from "./banking/banking.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
@@ -44,8 +42,6 @@ import environmentValidation from "./config/environment.validation";
     SalesModule,
     StockCountsModule,
     AlertsModule,
-    AccountingModule,
-    BankingModule,
     NotificationsModule,
   ],
   controllers: [AppController],
