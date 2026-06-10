@@ -8,18 +8,21 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { SignInDto } from "./dto/SignInDto.dto";
+import { RegisterDto } from "./dto/RegisterDto.dto";
 import { AuthService } from "./auth.service";
 import { Request, Response } from "express";
 import { AuthGuard } from "./guard/auth.guard";
 import { SeedService } from "../../prisma/seed.service";
-import { ApiTags } from "@nestjs/swagger";
+import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { RegisterProvider } from "./providers/register.provider";
 
 @Controller("auth")
 @ApiTags("Auth")
 export class AuthController {
   constructor(
     private authService: AuthService,
-    private seedService: SeedService
+    private seedService: SeedService,
+    private registerProvider: RegisterProvider,
   ) {}
 
   @Post("sign-in")
@@ -28,6 +31,18 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response
   ) {
     return this.authService.signIn(dto, response);
+  }
+
+  @Post("register")
+  @ApiOperation({
+    summary:
+      "Public self-signup: create a tenant + first admin + Basic subscription, then log them in.",
+  })
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return this.registerProvider.register(dto, response);
   }
 
   @Get("refresh-token")

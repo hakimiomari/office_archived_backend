@@ -12,9 +12,11 @@ import { SignInProvider } from "./providers/sign-in.provider";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { LogoutProvider } from "./providers/logout.provider";
 import { TokenProvider } from "./providers/token.provider";
+import { RegisterProvider } from "./providers/register.provider";
 import { GoogleAuthenticationController } from "./social/google-authentication.controller";
 import { GoogleAuthenticationService } from "./social/google-authentication.service";
 import googleAuthConfig from "./config/google-auth.config";
+import { AccountingModule } from "../accounting/accounting.module";
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import googleAuthConfig from "./config/google-auth.config";
     RedisModule,
     ConfigModule.forFeature(googleAuthConfig),
     forwardRef(() => UserModule),
+    AccountingModule, // for ChartOfAccountsService used by RegisterProvider
+
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -48,6 +52,7 @@ import googleAuthConfig from "./config/google-auth.config";
     SignInProvider,
     LogoutProvider,
     TokenProvider,
+    RegisterProvider,
     GoogleAuthenticationService,
   ],
   exports: [
