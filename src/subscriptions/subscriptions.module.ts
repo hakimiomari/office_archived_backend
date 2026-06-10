@@ -3,6 +3,7 @@ import { AuthModule } from "../auth/auth.module";
 import { PrismaModule } from "../prisma/prisma.module";
 import { RedisModule } from "../redis/redis.module";
 import { SubscriptionsController } from "./subscriptions.controller";
+import { PublicPlansController } from "./public-plans.controller";
 import { SubscriptionsService } from "./subscriptions.service";
 import { SubscriptionLimitService } from "./subscription-limit.service";
 import { SubscriptionModuleGuard } from "./guards/subscription-module.guard";
@@ -24,7 +25,7 @@ import { SubscriptionFeatureGuard } from "./guards/subscription-feature.guard";
   // (AuthGuard depends on TokenProvider). `forwardRef` because the auth
   // graph is large and we don't want load-order edge cases.
   imports: [PrismaModule, RedisModule, forwardRef(() => AuthModule)],
-  controllers: [SubscriptionsController],
+  controllers: [SubscriptionsController, PublicPlansController],
   providers: [
     SubscriptionsService,
     SubscriptionLimitService,

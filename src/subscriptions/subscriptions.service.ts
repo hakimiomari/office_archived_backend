@@ -243,6 +243,19 @@ export class SubscriptionsService {
     });
   }
 
+  /**
+   * Public pricing-page payload. Returns the same shape as listPlans()
+   * but only for ACTIVE plans, so a disabled "internal" plan never
+   * leaks to the marketing site. No authentication required.
+   */
+  async listPublicPlans() {
+    return this.rawDb.plan.findMany({
+      where: { deletedAt: null, isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      include: { modules: true, features: true, limit: true },
+    });
+  }
+
   async getPlan(id: number) {
     const plan = await this.rawDb.plan.findFirst({
       where: { id, deletedAt: null },
