@@ -10,13 +10,15 @@ import { HashingProvider } from "src/auth/providers/hashing.provider";
 import { FindOneUserByEmailProvider } from "./find-one-user-by-email.provider";
 import { TokenProvider } from "src/auth/providers/token.provider";
 import { getTenantContext, isSuperAdmin } from "src/tenant/tenant-context";
+import { SubscriptionLimitService } from "src/subscriptions/subscription-limit.service";
 @Injectable()
 export class CreateUserProvider {
   constructor(
     private readonly prisma: PrismaService,
     private readonly hashingProvider: HashingProvider,
     private readonly findOneUserByEmailProvider: FindOneUserByEmailProvider,
-    private readonly tokenProvider: TokenProvider
+    private readonly tokenProvider: TokenProvider,
+    private readonly subscriptionLimits: SubscriptionLimitService,
   ) {}
 
   public async create(createUserDto: CreateUserDto) {
@@ -72,6 +74,13 @@ export class CreateUserProvider {
           "Only SUPER_ADMIN can create users without a company",
         );
       }
+    }
+
+    // Subscription limit: refuses the create if the tenant's plan caps
+    // users and the cap is reached. SUPER_ADMIN bypasses (no companyId
+    // to enforce). Warn-only until SUBSCRIPTION_ENFORCE=1.
+    if (resolvedUserRole !== "SUPER_ADMIN") {
+      await this.subscriptionLimits.assertCanCreateUser(resolvedCompanyId);
     }
 
     const newUser = await this.prisma.user.create({

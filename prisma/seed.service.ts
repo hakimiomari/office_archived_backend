@@ -168,5 +168,172 @@ export class SeedService {
     }
 
     console.log('✅ Admin user assigned admin role');
+
+    // ─── 5. SUBSCRIPTION PLANS ───
+    await this.seedPlans();
+    console.log('✅ Subscription plans seeded (basic, premium, pro)');
+  }
+
+  /**
+   * Idempotent plan + plan-module + plan-feature + plan-limit upserts.
+   * Re-running the seed is safe and brings every plan back to the
+   * codified shape — manual edits in /admin/plans will be reverted.
+   * The migration's backfill block does the same on first deploy.
+   */
+  async seedPlans() {
+    const PLAN_DEFS: Array<{
+      slug: string;
+      name: string;
+      description: string;
+      sortOrder: number;
+      modules: string[];
+      features: string[];
+      limit: {
+        maxUsers: number | null;
+        maxWarehouses: number | null;
+        maxItems: number | null;
+        maxEmployees: number | null;
+        storageGb: number | null;
+      };
+    }> = [
+      {
+        slug: 'basic',
+        name: 'Basic',
+        description: 'Core inventory + sales + employees',
+        sortOrder: 0,
+        modules: [
+          'INVENTORY',
+          'SALES',
+          'EMPLOYEES',
+          'CATEGORIES',
+          'USERS',
+          'ROLES',
+        ],
+        features: [],
+        limit: {
+          maxUsers: 5,
+          maxWarehouses: 1,
+          maxItems: 500,
+          maxEmployees: 10,
+          storageGb: 1,
+        },
+      },
+      {
+        slug: 'premium',
+        name: 'Premium',
+        description: 'Adds alerts + stock counts + key reports',
+        sortOrder: 1,
+        modules: [
+          'INVENTORY',
+          'SALES',
+          'EMPLOYEES',
+          'CATEGORIES',
+          'ALERTS',
+          'STOCK_COUNTS',
+          'USERS',
+          'ROLES',
+        ],
+        features: [
+          'INVENTORY_REPORTS',
+          'SALES_PDF_EXPORT',
+          'CUSTOMER_STATEMENT_PDF',
+        ],
+        limit: {
+          maxUsers: 25,
+          maxWarehouses: 5,
+          maxItems: 5000,
+          maxEmployees: 50,
+          storageGb: 10,
+        },
+      },
+      {
+        slug: 'pro',
+        name: 'Pro',
+        description: 'All modules + accounting + banking + audit logs',
+        sortOrder: 2,
+        modules: [
+          'INVENTORY',
+          'SALES',
+          'EMPLOYEES',
+          'CATEGORIES',
+          'ALERTS',
+          'STOCK_COUNTS',
+          'ACCOUNTING',
+          'BANKING',
+          'USERS',
+          'ROLES',
+        ],
+        features: [
+          'INVENTORY_REPORTS',
+          'INVENTORY_PROFIT_REPORT',
+          'SALES_PDF_EXPORT',
+          'CUSTOMER_STATEMENT_PDF',
+          'ACCOUNTING_LEDGER',
+          'ACCOUNTING_JOURNALS',
+          'BANK_RECONCILIATION',
+          'AUDIT_LOGS',
+        ],
+        limit: {
+          maxUsers: null,
+          maxWarehouses: null,
+          maxItems: null,
+          maxEmployees: null,
+          storageGb: null,
+        },
+      },
+    ];
+
+    for (const def of PLAN_DEFS) {
+      const plan = await this.prismaService.plan.upsert({
+        where: { slug: def.slug },
+        update: {
+          name: def.name,
+          description: def.description,
+          sortOrder: def.sortOrder,
+          isActive: true,
+        },
+        create: {
+          slug: def.slug,
+          name: def.name,
+          description: def.description,
+          sortOrder: def.sortOrder,
+          isActive: true,
+        },
+      });
+
+      // Replace the module set in-place (delete + recreate) so removing
+      // a module from the codified list also removes it from the DB.
+      await this.prismaService.planModule.deleteMany({
+        where: { planId: plan.id },
+      });
+      if (def.modules.length > 0) {
+        await this.prismaService.planModule.createMany({
+          data: def.modules.map((m) => ({
+            planId: plan.id,
+            moduleCode: m as any,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      await this.prismaService.planFeature.deleteMany({
+        where: { planId: plan.id },
+      });
+      if (def.features.length > 0) {
+        await this.prismaService.planFeature.createMany({
+          data: def.features.map((f) => ({
+            planId: plan.id,
+            featureCode: f as any,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      await this.prismaService.planLimit.upsert({
+        where: { planId: plan.id },
+        update: def.limit,
+        create: { planId: plan.id, ...def.limit },
+      });
+    }
   }
 }

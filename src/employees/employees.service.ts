@@ -6,6 +6,8 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { tenantCreateStrict } from '../tenant/tenant-create';
+import { effectiveCompanyId } from '../tenant/tenant-context';
+import { SubscriptionLimitService } from '../subscriptions/subscription-limit.service';
 import {
   CreateEmployeeDto,
   UpdateEmployeeDto,
@@ -19,13 +21,17 @@ import {
 
 @Injectable()
 export class EmployeesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly subscriptionLimits: SubscriptionLimitService,
+  ) {}
 
   // =========================================================================
   //                                EMPLOYEES
   // =========================================================================
 
   async createEmployee(dto: CreateEmployeeDto, userId?: string) {
+    await this.subscriptionLimits.assertCanCreateEmployee(effectiveCompanyId());
     try {
       return await this.prisma.employee.create({
         data: tenantCreateStrict<Prisma.EmployeeUncheckedCreateInput>({

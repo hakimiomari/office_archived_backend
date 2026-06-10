@@ -17,6 +17,10 @@ import { EmployeesService } from './employees.service';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { PermissionGuard } from '../guard/permissions.guard';
 import { Permissions } from '../guard/permissions.decorator';
+import { SubscriptionModuleGuard } from '../subscriptions/guards/subscription-module.guard';
+import { SubscriptionFeatureGuard } from '../subscriptions/guards/subscription-feature.guard';
+import { RequireModule } from '../subscriptions/decorators/require-module.decorator';
+import { ModuleCode } from '@prisma/client';
 import {
   CreateEmployeeDto,
   UpdateEmployeeDto,
@@ -30,7 +34,13 @@ import {
 
 @ApiTags('Employees (HR)')
 @Controller('employees')
-@UseGuards(AuthGuard, PermissionGuard)
+@UseGuards(
+  AuthGuard,
+  SubscriptionModuleGuard,
+  SubscriptionFeatureGuard,
+  PermissionGuard,
+)
+@RequireModule(ModuleCode.EMPLOYEES)
 export class EmployeesController {
   constructor(private readonly employees: EmployeesService) {}
 

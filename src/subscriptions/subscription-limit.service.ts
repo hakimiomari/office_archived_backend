@@ -1,0 +1,97 @@
+import { ForbiddenException, Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { isSuperAdmin } from "../tenant/tenant-context";
+import {
+  SubscriptionsService,
+  type ActiveSubscriptionSnapshot,
+} from "./subscriptions.service";
+import { isSubscriptionEnforced } from "./subscription.constants";
+
+type LimitKey = "maxUsers" | "maxWarehouses" | "maxItems" | "maxEmployees";
+
+const LIMIT_LABEL: Record<LimitKey, string> = {
+  maxUsers: "users",
+  maxWarehouses: "warehouses",
+  maxItems: "items",
+  maxEmployees: "employees",
+};
+
+/**
+ * Per-resource limit enforcement. Called from the create paths of
+ * user / item / warehouse / employee. Bypassed when:
+ *   - caller is SUPER_ADMIN (no companyId to scope to),
+ *   - the company has no active subscription (treated as unlimited —
+ *     the module guard will catch a totally unsubscribed tenant),
+ *   - the plan does not specify the limit (null = unlimited),
+ *   - SUBSCRIPTION_ENFORCE !== "1" (warn-only mode: logs the would-be
+ *     denial and lets the write succeed).
+ */
+@Injectable()
+export class SubscriptionLimitService {
+  private readonly logger = new Logger("SubscriptionLimitService");
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly subs: SubscriptionsService,
+  ) {}
+
+  async assertCanCreateUser(companyId: number | null | undefined) {
+    return this.assert(companyId, "maxUsers", () => this.prisma.user.count());
+  }
+
+  async assertCanCreateWarehouse(companyId: number | null | undefined) {
+    return this.assert(companyId, "maxWarehouses", () =>
+      this.prisma.warehouse.count(),
+    );
+  }
+
+  async assertCanCreateItem(companyId: number | null | undefined) {
+    return this.assert(companyId, "maxItems", () => this.prisma.item.count());
+  }
+
+  async assertCanCreateEmployee(companyId: number | null | undefined) {
+    return this.assert(companyId, "maxEmployees", () =>
+      this.prisma.employee.count(),
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────────
+
+  private async assert(
+    companyId: number | null | undefined,
+    key: LimitKey,
+    counter: () => Promise<number>,
+  ) {
+    if (companyId == null) return; // SUPER_ADMIN — nothing to enforce
+    if (isSuperAdmin()) return;
+
+    const sub = await this.subs.getActiveForCompany(companyId);
+    if (!sub) return; // no active subscription — module guard handles
+    const max = sub.limit?.[key];
+    if (max == null) return; // unlimited
+
+    const current = await counter();
+    if (current < max) return; // capacity available
+
+    const message =
+      `${LIMIT_LABEL[key]} limit exceeded for ${sub.plan.name} plan ` +
+      `(${current}/${max}). Upgrade the subscription to add more.`;
+
+    if (!isSubscriptionEnforced()) {
+      this.logger.warn(
+        `[warn-only] ${message} (company=${companyId}, plan=${sub.plan.slug})`,
+      );
+      return;
+    }
+
+    throw new ForbiddenException({
+      code: "subscription.limit.exceeded",
+      limit: key,
+      planSlug: sub.plan.slug,
+      planName: sub.plan.name,
+      current,
+      max,
+      message,
+    });
+  }
+}

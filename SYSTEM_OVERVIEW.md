@@ -31,6 +31,7 @@
 ### Frontend (`office_archived_frontend/`)
 - **Framework**: Next.js 15 (App Router, RSC where possible, client components elsewhere)
 - **UI**: shadcn/ui (Radix primitives) + Tailwind CSS
+- **Searchable dropdowns**: every picker in the app is a `<Combobox>` (`components/ui/combobox.tsx` — Popover + cmdk with built-in search input). The underlying `<Select>` primitive still exists in `components/ui/select.tsx` but no consumer imports it. New backend endpoints that fan out into a frontend picker (entity lists, status enums, …) should expect the frontend to call them through a Combobox, not a native Select. Pagination / page-size endpoints are unaffected.
 - **i18n**: `next-intl` (en, fa, ps — Pashto/Dari are RTL)
 - **Charts**: Recharts
 - **Tables**: `@tanstack/react-table`

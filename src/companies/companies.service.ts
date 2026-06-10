@@ -54,6 +54,33 @@ export class CompaniesService {
     await this.tenants.runForCompany(company.id, () =>
       this.chart.seedDefault(),
     );
+
+    // Auto-assign the Basic subscription. Free, open-ended endDate.
+    // The plan must exist (`prisma db seed` + the bundled migration
+    // both insert it). We throw early if it's missing so the integrator
+    // catches a misconfigured seed immediately.
+    const basic = await this.db.plan.findUnique({
+      where: { slug: "basic" },
+    });
+    if (!basic) {
+      throw new Error(
+        'Basic plan not found — run `npx prisma db seed` so the subscription layer is initialised',
+      );
+    }
+    await this.tenants.runForCompany(company.id, () =>
+      this.prisma.companySubscription.create({
+        data: {
+          planId: basic.id,
+          startDate: new Date(),
+          status: "ACTIVE",
+          // Free Basic tier: open-ended, never expires unless an admin
+          // upgrades to a paid plan with MONTHLY / YEARLY cycle.
+          billingCycle: "PERPETUAL",
+          autoRenew: true,
+        },
+      } as any),
+    );
+
     return company;
   }
 

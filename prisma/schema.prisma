@@ -59,7 +59,151 @@ model Company {
   bankTransactions BankTransaction[]
   reconciliations  Reconciliation[]
 
+  subscriptions    CompanySubscription[]
+
   @@map("companies")
+}
+
+// ================================================================
+//                       SUBSCRIPTION LAYER
+// Plans (global) + per-company subscriptions (tenant-scoped). A
+// Plan owns a fixed set of ModuleCode/FeatureCode enables plus an
+// optional row-count limit. Every Company has at most one ACTIVE
+// CompanySubscription at a time; the SubscriptionsService enforces
+// this at the service layer (Prisma can't express partial
+// uniqueness). Plans/PlanModule/PlanFeature/PlanLimit are NOT in
+// TENANT_MODELS — they are global config. Only CompanySubscription
+// is tenant-scoped and auto-injected with companyId by the Prisma
+// extension.
+// ================================================================
+enum ModuleCode {
+  INVENTORY
+  SALES
+  EMPLOYEES
+  CATEGORIES
+  ALERTS
+  STOCK_COUNTS
+  ACCOUNTING
+  BANKING
+  USERS
+  ROLES
+}
+
+enum FeatureCode {
+  INVENTORY_REPORTS
+  INVENTORY_PROFIT_REPORT
+  SALES_PDF_EXPORT
+  CUSTOMER_STATEMENT_PDF
+  ACCOUNTING_LEDGER
+  ACCOUNTING_JOURNALS
+  BANK_RECONCILIATION
+  AUDIT_LOGS
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  PAST_DUE
+}
+
+/**
+ * Billing cadence chosen at upgrade-time. Drives the auto-computed
+ * `endDate`:
+ *   - MONTHLY   → endDate = startDate + 1 month
+ *   - YEARLY    → endDate = startDate + 1 year
+ *   - PERPETUAL → endDate = null (free tiers / open-ended admin grants)
+ */
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+  PERPETUAL
+}
+
+model Plan {
+  id           Int      @id @default(autoincrement())
+  name         String
+  slug         String   @unique
+  description  String?  @db.Text
+  monthlyPrice Float    @default(0)
+  yearlyPrice  Float    @default(0)
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  modules       PlanModule[]
+  features      PlanFeature[]
+  limit         PlanLimit?
+  subscriptions CompanySubscription[]
+
+  @@index([isActive, sortOrder])
+  @@index([deletedAt])
+  @@map("plans")
+}
+
+model PlanModule {
+  id         Int        @id @default(autoincrement())
+  planId     Int
+  moduleCode ModuleCode
+
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, moduleCode])
+  @@index([moduleCode])
+  @@map("plan_modules")
+}
+
+model PlanFeature {
+  id          Int         @id @default(autoincrement())
+  planId      Int
+  featureCode FeatureCode
+
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, featureCode])
+  @@index([featureCode])
+  @@map("plan_features")
+}
+
+model PlanLimit {
+  id            Int  @id @default(autoincrement())
+  planId        Int  @unique
+  maxUsers      Int?
+  maxWarehouses Int?
+  maxItems      Int?
+  maxEmployees  Int?
+  storageGb     Int?
+
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@map("plan_limits")
+}
+
+model CompanySubscription {
+  id           Int                @id @default(autoincrement())
+  companyId    Int
+  planId       Int
+  startDate    DateTime           @default(now())
+  endDate      DateTime?
+  status       SubscriptionStatus @default(ACTIVE)
+  billingCycle BillingCycle       @default(PERPETUAL)
+  autoRenew    Boolean            @default(true)
+  notes     String?            @db.Text
+  createdBy String?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  deletedAt DateTime?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plan    Plan    @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([companyId])
+  @@index([status])
+  @@index([endDate])
+  @@index([deletedAt])
+  @@map("company_subscriptions")
 }
 
 // ================================================================

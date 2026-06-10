@@ -10,6 +10,11 @@ import {
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { AuthGuard } from "../auth/guard/auth.guard";
 import { SuperAdminGuard } from "../tenant/super-admin.guard";
+import { SubscriptionModuleGuard } from "../subscriptions/guards/subscription-module.guard";
+import { SubscriptionFeatureGuard } from "../subscriptions/guards/subscription-feature.guard";
+import { RequireModule } from "../subscriptions/decorators/require-module.decorator";
+import { RequireFeature } from "../subscriptions/decorators/require-feature.decorator";
+import { ModuleCode, FeatureCode } from "@prisma/client";
 import { ChartOfAccountsService } from "./chart-of-accounts.service";
 import { LedgerService } from "./ledger.service";
 
@@ -27,7 +32,13 @@ import { LedgerService } from "./ledger.service";
  */
 @ApiTags("Admin / Accounting")
 @Controller("accounting")
-@UseGuards(AuthGuard, SuperAdminGuard)
+@UseGuards(
+  AuthGuard,
+  SubscriptionModuleGuard,
+  SubscriptionFeatureGuard,
+  SuperAdminGuard,
+)
+@RequireModule(ModuleCode.ACCOUNTING)
 export class AccountingController {
   constructor(
     private readonly chart: ChartOfAccountsService,
@@ -35,12 +46,14 @@ export class AccountingController {
   ) {}
 
   @Get("chart")
+  @RequireFeature(FeatureCode.ACCOUNTING_LEDGER)
   @ApiOperation({ summary: "List the active tenant's chart of accounts" })
   listChart() {
     return this.chart.list();
   }
 
   @Post("seed")
+  @RequireFeature(FeatureCode.ACCOUNTING_LEDGER)
   @ApiOperation({
     summary: "Seed the default chart for the active tenant (idempotent)",
   })
@@ -49,6 +62,7 @@ export class AccountingController {
   }
 
   @Post("seed-all")
+  @RequireFeature(FeatureCode.ACCOUNTING_LEDGER)
   @ApiOperation({
     summary: "Backfill the default chart for every active tenant",
   })
@@ -57,6 +71,7 @@ export class AccountingController {
   }
 
   @Get("journal-entries")
+  @RequireFeature(FeatureCode.ACCOUNTING_JOURNALS)
   @ApiOperation({ summary: "List journal entries" })
   listEntries(
     @Query("sourceType") sourceType?: string,
@@ -77,6 +92,7 @@ export class AccountingController {
   }
 
   @Get("journal-entries/:id")
+  @RequireFeature(FeatureCode.ACCOUNTING_JOURNALS)
   @ApiOperation({ summary: "Get a journal entry with all its lines" })
   getEntry(@Param("id", ParseIntPipe) id: number) {
     return this.ledger.findOneEntry(id);

@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { tenantCreateStrict } from '../../tenant/tenant-create';
+import { effectiveCompanyId } from '../../tenant/tenant-context';
+import { SubscriptionLimitService } from '../../subscriptions/subscription-limit.service';
 import {
   CreateWarehouseDto,
   UpdateWarehouseDto,
@@ -15,9 +17,13 @@ import { PaginationDto } from '../dto/inventory-filter.dto';
  */
 @Injectable()
 export class WarehousesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly subscriptionLimits: SubscriptionLimitService,
+  ) {}
 
   async create(dto: CreateWarehouseDto) {
+    await this.subscriptionLimits.assertCanCreateWarehouse(effectiveCompanyId());
     return this.prisma.warehouse.create({
       data: tenantCreateStrict<Prisma.WarehouseUncheckedCreateInput>({ ...dto }),
     });

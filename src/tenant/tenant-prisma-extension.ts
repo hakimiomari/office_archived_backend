@@ -41,6 +41,9 @@ const TENANT_MODELS = new Set([
   "BankAccount",
   "BankTransaction",
   "Reconciliation",
+  // Subscription layer — only CompanySubscription is tenant-scoped;
+  // Plan / PlanModule / PlanFeature / PlanLimit are global config.
+  "CompanySubscription",
 ]);
 
 const READ_OPS = new Set([
@@ -93,6 +96,9 @@ const AUDITED_MODELS = new Set([
   // the import operation can be logged at the service level if needed.
   "BankAccount",
   "Reconciliation",
+  // Subscription changes (upgrade / downgrade / cancel) are
+  // operationally significant — always audit.
+  "CompanySubscription",
 ]);
 
 /**

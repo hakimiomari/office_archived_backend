@@ -14,6 +14,10 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { PermissionGuard } from '../guard/permissions.guard';
 import { Permissions } from '../guard/permissions.decorator';
+import { SubscriptionModuleGuard } from '../subscriptions/guards/subscription-module.guard';
+import { SubscriptionFeatureGuard } from '../subscriptions/guards/subscription-feature.guard';
+import { RequireModule } from '../subscriptions/decorators/require-module.decorator';
+import { ModuleCode } from '@prisma/client';
 import { CategoriesService } from './categories.service';
 import {
   CategoryFilterDto,
@@ -23,7 +27,13 @@ import {
 
 @ApiTags('Categories')
 @Controller('categories')
-@UseGuards(AuthGuard, PermissionGuard)
+@UseGuards(
+  AuthGuard,
+  SubscriptionModuleGuard,
+  SubscriptionFeatureGuard,
+  PermissionGuard,
+)
+@RequireModule(ModuleCode.CATEGORIES)
 export class CategoriesController {
   constructor(private readonly categories: CategoriesService) {}
 

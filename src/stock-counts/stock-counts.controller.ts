@@ -15,6 +15,10 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { PermissionGuard } from '../guard/permissions.guard';
 import { Permissions } from '../guard/permissions.decorator';
+import { SubscriptionModuleGuard } from '../subscriptions/guards/subscription-module.guard';
+import { SubscriptionFeatureGuard } from '../subscriptions/guards/subscription-feature.guard';
+import { RequireModule } from '../subscriptions/decorators/require-module.decorator';
+import { ModuleCode } from '@prisma/client';
 import { StockCountsService } from './stock-counts.service';
 import {
   CompleteCountDto,
@@ -25,7 +29,13 @@ import {
 
 @ApiTags('Stock Counts')
 @Controller('stock-counts')
-@UseGuards(AuthGuard, PermissionGuard)
+@UseGuards(
+  AuthGuard,
+  SubscriptionModuleGuard,
+  SubscriptionFeatureGuard,
+  PermissionGuard,
+)
+@RequireModule(ModuleCode.STOCK_COUNTS)
 export class StockCountsController {
   constructor(private readonly service: StockCountsService) {}
 

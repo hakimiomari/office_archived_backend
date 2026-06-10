@@ -17,6 +17,7 @@ import { CompaniesModule } from "./companies/companies.module";
 import { AccountingModule } from "./accounting/accounting.module";
 import { BankingModule } from "./banking/banking.module";
 import { NotificationsModule } from "./notifications/notifications.module";
+import { SubscriptionsModule } from "./subscriptions/subscriptions.module";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
 import { APP_INTERCEPTOR } from "@nestjs/core";
@@ -55,6 +56,7 @@ import environmentValidation from "./config/environment.validation";
     AccountingModule,
     BankingModule,
     NotificationsModule,
+    SubscriptionsModule,
   ],
   controllers: [AppController],
   providers: [

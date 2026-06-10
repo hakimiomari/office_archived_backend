@@ -15,6 +15,11 @@ import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Request } from "express";
 import { AuthGuard } from "../auth/guard/auth.guard";
 import { SuperAdminGuard } from "../tenant/super-admin.guard";
+import { SubscriptionModuleGuard } from "../subscriptions/guards/subscription-module.guard";
+import { SubscriptionFeatureGuard } from "../subscriptions/guards/subscription-feature.guard";
+import { RequireModule } from "../subscriptions/decorators/require-module.decorator";
+import { RequireFeature } from "../subscriptions/decorators/require-feature.decorator";
+import { ModuleCode, FeatureCode } from "@prisma/client";
 import { BankAccountsService } from "./bank-accounts.service";
 import { BankTransactionsService } from "./bank-transactions.service";
 import { ReconciliationsService } from "./reconciliations.service";
@@ -40,7 +45,13 @@ import {
  */
 @ApiTags("Banking / Reconciliation")
 @Controller("banking")
-@UseGuards(AuthGuard, SuperAdminGuard)
+@UseGuards(
+  AuthGuard,
+  SubscriptionModuleGuard,
+  SubscriptionFeatureGuard,
+  SuperAdminGuard,
+)
+@RequireModule(ModuleCode.BANKING)
 export class BankingController {
   constructor(
     private readonly accounts: BankAccountsService,
@@ -110,6 +121,7 @@ export class BankingController {
   }
 
   @Post("transactions/:id/match")
+  @RequireFeature(FeatureCode.BANK_RECONCILIATION)
   @ApiOperation({
     summary: "Manually match a bank transaction to a Payment or SupplierPayment",
   })
@@ -127,6 +139,7 @@ export class BankingController {
   }
 
   @Post("transactions/:id/unmatch")
+  @RequireFeature(FeatureCode.BANK_RECONCILIATION)
   @ApiOperation({ summary: "Reset a bank transaction back to UNMATCHED" })
   unmatchTransaction(@Param("id", ParseIntPipe) id: number) {
     return this.transactions.unmatch(id);
@@ -141,6 +154,7 @@ export class BankingController {
   }
 
   @Post("transactions/auto-match")
+  @RequireFeature(FeatureCode.BANK_RECONCILIATION)
   @ApiOperation({
     summary:
       "Auto-match unmatched bank transactions to Payment / SupplierPayment rows",
@@ -158,6 +172,7 @@ export class BankingController {
   // ─────────────── Reconciliations ───────────────
 
   @Post("reconciliations")
+  @RequireFeature(FeatureCode.BANK_RECONCILIATION)
   @ApiOperation({ summary: "Open a reconciliation period" })
   openReconciliation(
     @Body() dto: CreateReconciliationDto,
@@ -171,6 +186,7 @@ export class BankingController {
   }
 
   @Get("reconciliations")
+  @RequireFeature(FeatureCode.BANK_RECONCILIATION)
   @ApiOperation({ summary: "List reconciliations" })
   listReconciliations(@Query("bankAccountId") bankAccountId?: string) {
     return this.reconciliations.findAll(
@@ -179,12 +195,14 @@ export class BankingController {
   }
 
   @Get("reconciliations/:id")
+  @RequireFeature(FeatureCode.BANK_RECONCILIATION)
   @ApiOperation({ summary: "Get a reconciliation" })
   getReconciliation(@Param("id", ParseIntPipe) id: number) {
     return this.reconciliations.findOne(id);
   }
 
   @Post("reconciliations/:id/close")
+  @RequireFeature(FeatureCode.BANK_RECONCILIATION)
   @ApiOperation({
     summary:
       "Close a reconciliation period; rejects if book balance disagrees with statement closing balance",

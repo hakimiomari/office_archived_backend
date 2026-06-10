@@ -13,12 +13,22 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { PermissionGuard } from '../guard/permissions.guard';
 import { Permissions } from '../guard/permissions.decorator';
+import { SubscriptionModuleGuard } from '../subscriptions/guards/subscription-module.guard';
+import { SubscriptionFeatureGuard } from '../subscriptions/guards/subscription-feature.guard';
+import { RequireModule } from '../subscriptions/decorators/require-module.decorator';
+import { ModuleCode } from '@prisma/client';
 import { AlertsService } from './alerts.service';
 import { AlertFilterDto } from './alerts.dto';
 
 @ApiTags('Alerts')
 @Controller('alerts')
-@UseGuards(AuthGuard, PermissionGuard)
+@UseGuards(
+  AuthGuard,
+  SubscriptionModuleGuard,
+  SubscriptionFeatureGuard,
+  PermissionGuard,
+)
+@RequireModule(ModuleCode.ALERTS)
 export class AlertsController {
   constructor(private readonly service: AlertsService) {}
 

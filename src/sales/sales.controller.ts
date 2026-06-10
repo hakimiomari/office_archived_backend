@@ -22,6 +22,11 @@ import { InvoicePdfService } from './invoice-pdf.service';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { PermissionGuard } from '../guard/permissions.guard';
 import { Permissions } from '../guard/permissions.decorator';
+import { SubscriptionModuleGuard } from '../subscriptions/guards/subscription-module.guard';
+import { SubscriptionFeatureGuard } from '../subscriptions/guards/subscription-feature.guard';
+import { RequireModule } from '../subscriptions/decorators/require-module.decorator';
+import { RequireFeature } from '../subscriptions/decorators/require-feature.decorator';
+import { ModuleCode, FeatureCode } from '@prisma/client';
 import {
   CreateCustomerDto,
   UpdateCustomerDto,
@@ -56,7 +61,13 @@ import {
  */
 @ApiTags('Sales')
 @Controller('sales')
-@UseGuards(AuthGuard, PermissionGuard)
+@UseGuards(
+  AuthGuard,
+  SubscriptionModuleGuard,
+  SubscriptionFeatureGuard,
+  PermissionGuard,
+)
+@RequireModule(ModuleCode.SALES)
 export class SalesController {
   constructor(
     private readonly customers: CustomersService,
@@ -94,6 +105,7 @@ export class SalesController {
 
   @Get('reports/pdf')
   @Permissions('sale.read')
+  @RequireFeature(FeatureCode.SALES_PDF_EXPORT)
   @ApiOperation({ summary: 'Generate the sales report as a downloadable PDF' })
   async downloadReportPdf(
     @Query('period') period: 'daily' | 'weekly' | 'monthly' | 'yearly' = 'monthly',
@@ -171,6 +183,7 @@ export class SalesController {
 
   @Get('customers/:id/report-pdf')
   @Permissions('customer.read')
+  @RequireFeature(FeatureCode.CUSTOMER_STATEMENT_PDF)
   @ApiOperation({
     summary: 'Download a single PDF statement with all sales + payments for a customer',
   })
@@ -292,6 +305,7 @@ export class SalesController {
 
   @Get(':id/pdf')
   @Permissions('sale.read')
+  @RequireFeature(FeatureCode.SALES_PDF_EXPORT)
   @ApiOperation({ summary: 'Download a sale as a PDF invoice' })
   async downloadPdf(
     @Param('id', ParseIntPipe) id: number,

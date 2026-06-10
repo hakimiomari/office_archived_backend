@@ -22,6 +22,11 @@ import { InventoryReportsService } from './reports/inventory-reports.service';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { PermissionGuard } from '../guard/permissions.guard';
 import { Permissions } from '../guard/permissions.decorator';
+import { SubscriptionModuleGuard } from '../subscriptions/guards/subscription-module.guard';
+import { SubscriptionFeatureGuard } from '../subscriptions/guards/subscription-feature.guard';
+import { RequireModule } from '../subscriptions/decorators/require-module.decorator';
+import { RequireFeature } from '../subscriptions/decorators/require-feature.decorator';
+import { ModuleCode, FeatureCode } from '@prisma/client';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { CreateWarehouseDto, UpdateWarehouseDto } from './dto/warehouse.dto';
@@ -56,7 +61,13 @@ import {
  */
 @ApiTags('Inventory')
 @Controller('inventory')
-@UseGuards(AuthGuard, PermissionGuard)
+@UseGuards(
+  AuthGuard,
+  SubscriptionModuleGuard,
+  SubscriptionFeatureGuard,
+  PermissionGuard,
+)
+@RequireModule(ModuleCode.INVENTORY)
 export class InventoryController {
   constructor(
     private readonly items: ItemsService,
@@ -78,6 +89,7 @@ export class InventoryController {
 
   @Get('reports/current-stock')
   @Permissions('inventory.read')
+  @RequireFeature(FeatureCode.INVENTORY_REPORTS)
   @ApiOperation({ summary: 'Current stock per item across all warehouses' })
   reportCurrentStock() {
     return this.reports.currentStock();
@@ -85,6 +97,7 @@ export class InventoryController {
 
   @Get('reports/low-stock')
   @Permissions('inventory.read')
+  @RequireFeature(FeatureCode.INVENTORY_REPORTS)
   @ApiOperation({ summary: 'Items currently below their minStock threshold' })
   reportLowStock() {
     return this.reports.lowStock();
@@ -92,6 +105,7 @@ export class InventoryController {
 
   @Get('reports/movements')
   @Permissions('inventory.read')
+  @RequireFeature(FeatureCode.INVENTORY_REPORTS)
   @ApiOperation({ summary: 'Movement counts grouped by type' })
   reportMovements() {
     return this.reports.movementCounts();
@@ -99,6 +113,7 @@ export class InventoryController {
 
   @Get('reports/by-warehouse')
   @Permissions('inventory.read')
+  @RequireFeature(FeatureCode.INVENTORY_REPORTS)
   @ApiOperation({ summary: 'Stock breakdown per warehouse' })
   reportByWarehouse() {
     return this.reports.byWarehouse();
@@ -106,6 +121,7 @@ export class InventoryController {
 
   @Get('reports/monthly-usage')
   @Permissions('inventory.read')
+  @RequireFeature(FeatureCode.INVENTORY_REPORTS)
   @ApiOperation({ summary: 'Monthly OUT usage for the last 12 months' })
   reportMonthlyUsage() {
     return this.reports.monthlyUsage();
@@ -113,6 +129,7 @@ export class InventoryController {
 
   @Get('reports/dead-stock')
   @Permissions('inventory.read')
+  @RequireFeature(FeatureCode.INVENTORY_REPORTS)
   @ApiOperation({ summary: 'Items with no OUT movement in the last N days' })
   reportDeadStock(@Query('days') days?: string) {
     return this.reports.deadStock(days ? Number(days) : 90);
@@ -120,6 +137,7 @@ export class InventoryController {
 
   @Get('reports/sales-velocity')
   @Permissions('inventory.read')
+  @RequireFeature(FeatureCode.INVENTORY_REPORTS)
   @ApiOperation({ summary: 'Sales velocity & fast/slow movers' })
   reportSalesVelocity(@Query('days') days?: string) {
     return this.reports.salesVelocity(days ? Number(days) : 30);
@@ -127,6 +145,7 @@ export class InventoryController {
 
   @Get('reports/turnover')
   @Permissions('inventory.read')
+  @RequireFeature(FeatureCode.INVENTORY_REPORTS)
   @ApiOperation({ summary: 'Inventory turnover rate (COGS / avg inventory)' })
   reportTurnover(@Query('days') days?: string) {
     return this.reports.turnover(days ? Number(days) : 90);
@@ -134,6 +153,7 @@ export class InventoryController {
 
   @Get('reports/profit-per-product')
   @Permissions('inventory.read')
+  @RequireFeature(FeatureCode.INVENTORY_PROFIT_REPORT)
   @ApiOperation({ summary: 'Revenue, COGS and profit per product' })
   reportProfitPerProduct(@Query('days') days?: string) {
     return this.reports.profitPerProduct(days ? Number(days) : 30);
@@ -141,6 +161,7 @@ export class InventoryController {
 
   @Get('reports/reorder-suggestions')
   @Permissions('inventory.read')
+  @RequireFeature(FeatureCode.INVENTORY_REPORTS)
   @ApiOperation({ summary: 'Items that need reordering with suggested quantities' })
   reportReorderSuggestions() {
     return this.reports.reorderSuggestions();
