@@ -7,7 +7,6 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import { Response } from "express";
 import { PrismaService } from "src/prisma/prisma.service";
 import { TenantService } from "src/tenant/tenant.service";
-import { ChartOfAccountsService } from "src/accounting/chart-of-accounts.service";
 import { AuditService } from "src/tenant/audit.service";
 import { HashingProvider } from "./hashing.provider";
 import { TokenProvider } from "./token.provider";
@@ -41,7 +40,6 @@ export class RegisterProvider {
     private readonly hashing: HashingProvider,
     private readonly tokens: TokenProvider,
     private readonly tenants: TenantService,
-    private readonly chart: ChartOfAccountsService,
     private readonly audit: AuditService,
   ) {}
 
@@ -95,13 +93,18 @@ export class RegisterProvider {
       throw err;
     }
 
-    // 2) Chart of accounts + 3) Basic subscription — both inside the
-    // new tenant's runForCompany context so the Prisma extension's
-    // companyId injection / soft-delete / audit emit all see the
-    // right tenant id.
+    // 2) Basic subscription — inside the new tenant's runForCompany
+    // context so the Prisma extension's companyId injection + audit
+    // emit see the right tenant id.
+    //
+    // Note: the chart of accounts is NOT seeded here. Basic doesn't
+    // include the ACCOUNTING module, so the chart is irrelevant. When
+    // a SUPER_ADMIN later upgrades this tenant to a plan that
+    // includes accounting, they (or the new tenant admin) run
+    // `POST /accounting/seed` — it's idempotent. Bringing the
+    // AccountingModule into AuthModule was creating a circular
+    // dependency, hence the deliberate split.
     await this.tenants.runForCompany(company.id, async () => {
-      await this.chart.seedDefault();
-
       const basic = await this.raw.plan.findUnique({
         where: { slug: "basic" },
       });

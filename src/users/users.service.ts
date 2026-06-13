@@ -46,6 +46,9 @@ export class UserService {
     const tenantWhere: any =
       isSuperAdmin() && cid == null ? {} : { companyId: cid };
 
+    // Search hits user name + email + the related Company.name. Prisma
+    // walks the relation via `company: { name: ... }`, which compiles
+    // to a JOIN + WHERE on the related row — no extra round-trip.
     const searchWhere: any = search
       ? {
           OR: [
@@ -59,6 +62,14 @@ export class UserService {
               email: {
                 contains: search,
                 mode: 'insensitive' as const,
+              },
+            },
+            {
+              company: {
+                name: {
+                  contains: search,
+                  mode: 'insensitive' as const,
+                },
               },
             },
           ],

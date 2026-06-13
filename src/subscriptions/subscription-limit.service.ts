@@ -1,10 +1,7 @@
 import { ForbiddenException, Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { isSuperAdmin } from "../tenant/tenant-context";
-import {
-  SubscriptionsService,
-  type ActiveSubscriptionSnapshot,
-} from "./subscriptions.service";
+import { SubscriptionsService } from "./subscriptions.service";
 import { isSubscriptionEnforced } from "./subscription.constants";
 
 type LimitKey = "maxUsers" | "maxWarehouses" | "maxItems" | "maxEmployees";
@@ -36,22 +33,38 @@ export class SubscriptionLimitService {
   ) {}
 
   async assertCanCreateUser(companyId: number | null | undefined) {
-    return this.assert(companyId, "maxUsers", () => this.prisma.user.count());
+    // `User` is intentionally excluded from TENANT_MODELS so the auth
+    // flow can find SUPER_ADMINs (companyId === null). That means
+    // `prisma.user.count()` does NOT auto-scope to the tenant, so we
+    // must filter explicitly here — otherwise a Basic tenant's cap
+    // would compare against the global user count. User has no
+    // `deletedAt` column; removal is a hard delete.
+    return this.assert(companyId, "maxUsers", (cid) =>
+      this.prisma.user.count({ where: { companyId: cid } }),
+    );
   }
 
   async assertCanCreateWarehouse(companyId: number | null | undefined) {
-    return this.assert(companyId, "maxWarehouses", () =>
-      this.prisma.warehouse.count(),
+    return this.assert(companyId, "maxWarehouses", (cid) =>
+      this.prisma.warehouse.count({
+        where: { companyId: cid, deletedAt: null } as any,
+      }),
     );
   }
 
   async assertCanCreateItem(companyId: number | null | undefined) {
-    return this.assert(companyId, "maxItems", () => this.prisma.item.count());
+    return this.assert(companyId, "maxItems", (cid) =>
+      this.prisma.item.count({
+        where: { companyId: cid, deletedAt: null } as any,
+      }),
+    );
   }
 
   async assertCanCreateEmployee(companyId: number | null | undefined) {
-    return this.assert(companyId, "maxEmployees", () =>
-      this.prisma.employee.count(),
+    return this.assert(companyId, "maxEmployees", (cid) =>
+      this.prisma.employee.count({
+        where: { companyId: cid, deletedAt: null } as any,
+      }),
     );
   }
 
@@ -60,7 +73,7 @@ export class SubscriptionLimitService {
   private async assert(
     companyId: number | null | undefined,
     key: LimitKey,
-    counter: () => Promise<number>,
+    counter: (companyId: number) => Promise<number>,
   ) {
     if (companyId == null) return; // SUPER_ADMIN — nothing to enforce
     if (isSuperAdmin()) return;
@@ -70,7 +83,7 @@ export class SubscriptionLimitService {
     const max = sub.limit?.[key];
     if (max == null) return; // unlimited
 
-    const current = await counter();
+    const current = await counter(companyId);
     if (current < max) return; // capacity available
 
     const message =

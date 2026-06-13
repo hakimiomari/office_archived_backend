@@ -49,6 +49,11 @@ export class SeedService {
       { name: 'payment.create', group_name: 'sales', label: 'Record Payment' },
       { name: 'payment.read', group_name: 'sales', label: 'Read Payments' },
       { name: 'payment.delete', group_name: 'sales', label: 'Delete Payment' },
+      // Subscription / Plan-change request review
+      // Granting `plan_request.review` lets a non-super-admin staff
+      // account approve or reject company upgrade requests from
+      // /admin/plan-requests. SUPER_ADMIN bypasses this check.
+      { name: 'plan_request.review', group_name: 'subscriptions', label: 'Review Plan Change Requests' },
     ];
 
     for (const perm of permissions) {

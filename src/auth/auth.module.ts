@@ -16,7 +16,6 @@ import { RegisterProvider } from "./providers/register.provider";
 import { GoogleAuthenticationController } from "./social/google-authentication.controller";
 import { GoogleAuthenticationService } from "./social/google-authentication.service";
 import googleAuthConfig from "./config/google-auth.config";
-import { AccountingModule } from "../accounting/accounting.module";
 
 @Module({
   imports: [
@@ -24,7 +23,6 @@ import { AccountingModule } from "../accounting/accounting.module";
     RedisModule,
     ConfigModule.forFeature(googleAuthConfig),
     forwardRef(() => UserModule),
-    AccountingModule, // for ChartOfAccountsService used by RegisterProvider
 
     JwtModule.registerAsync({
       imports: [ConfigModule],

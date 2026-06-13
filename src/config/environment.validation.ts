@@ -11,6 +11,13 @@ export default Joi.object({
   REFRESH_TOKEN_EXPIRED_TIME: Joi.string().required().default("15d"),
   GOOGLE_CLIENT_ID: Joi.string().required(),
   GOOGLE_CLIENT_SECRET: Joi.string().required(),
+  // Subscription enforcement gate. Set to "1" to actually throw 403
+  // from SubscriptionModuleGuard / SubscriptionFeatureGuard /
+  // SubscriptionLimitService. Anything else (unset, "0") keeps the
+  // layer in warn-only mode (logs the would-be block, lets the
+  // request through). Defaults to "0" so existing deployments don't
+  // get surprised after a deploy.
+  SUBSCRIPTION_ENFORCE: Joi.string().valid("0", "1").default("0"),
   //   REDIS_HOST: Joi.string().required(),
   //   REDIS_PORT: Joi.number().default(6379),
   //   REDIS_PASSWORD: Joi.string().required(),

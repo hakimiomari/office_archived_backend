@@ -59,7 +59,8 @@ model Company {
   bankTransactions BankTransaction[]
   reconciliations  Reconciliation[]
 
-  subscriptions    CompanySubscription[]
+  subscriptions      CompanySubscription[]
+  planChangeRequests PlanChangeRequest[]
 
   @@map("companies")
 }
@@ -120,6 +121,13 @@ enum BillingCycle {
   PERPETUAL
 }
 
+enum PlanChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 model Plan {
   id           Int      @id @default(autoincrement())
   name         String
@@ -137,6 +145,9 @@ model Plan {
   features      PlanFeature[]
   limit         PlanLimit?
   subscriptions CompanySubscription[]
+
+  requestedInChanges PlanChangeRequest[] @relation("RequestedPlan")
+  currentInChanges   PlanChangeRequest[] @relation("CurrentPlan")
 
   @@index([isActive, sortOrder])
   @@index([deletedAt])
@@ -204,6 +215,53 @@ model CompanySubscription {
   @@index([endDate])
   @@index([deletedAt])
   @@map("company_subscriptions")
+}
+
+// ────────────────────────────────────────────────────────────────
+// Plan upgrade/downgrade requests. A company admin submits a request
+// (selecting a target plan, billing cycle, optional payment receipt
+// and notes); a SUPER_ADMIN or anyone granted the
+// `plan_request.review` permission approves or rejects it. Approval
+// calls SubscriptionsService.changePlanForCompany immediately.
+//
+// Single-pending invariant (at-most-one PENDING per company) is
+// enforced at the service layer: create() checks for an existing
+// pending row first. We don't add a partial unique index because the
+// app-layer check needs to return a friendly 409, not a Postgres
+// constraint error.
+// ────────────────────────────────────────────────────────────────
+model PlanChangeRequest {
+  id              Int                     @id @default(autoincrement())
+  companyId       Int
+  requestedPlanId Int
+  currentPlanId   Int?
+  billingCycle    BillingCycle            @default(MONTHLY)
+
+  receiptUrl      String?
+  receiptFileName String?
+
+  notes           String?                 @db.Text
+  status          PlanChangeRequestStatus @default(PENDING)
+
+  reviewedById    Int?
+  reviewedAt      DateTime?
+  reviewNotes     String?                 @db.Text
+
+  createdById     Int?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  deletedAt       DateTime?
+
+  company       Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  requestedPlan Plan    @relation("RequestedPlan", fields: [requestedPlanId], references: [id], onDelete: Restrict)
+  currentPlan   Plan?   @relation("CurrentPlan", fields: [currentPlanId], references: [id], onDelete: SetNull)
+  reviewedBy    User?   @relation("ReviewedPlanRequests", fields: [reviewedById], references: [id], onDelete: SetNull)
+  createdBy     User?   @relation("CreatedPlanRequests", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status])
+  @@index([status, createdAt])
+  @@index([deletedAt])
+  @@map("plan_change_requests")
 }
 
 // ================================================================
@@ -477,6 +535,9 @@ model User {
   updatedUsers User[] @relation("UserUpdatedBy")
 
   created_roles Role[] @relation("CreatedRoles")
+
+  createdPlanRequests  PlanChangeRequest[] @relation("CreatedPlanRequests")
+  reviewedPlanRequests PlanChangeRequest[] @relation("ReviewedPlanRequests")
 
   @@index([companyId])
   @@map("users")
