@@ -17,6 +17,7 @@ import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { BillingCycle } from "@prisma/client";
 import { AuthGuard } from "../auth/guard/auth.guard";
 import { SuperAdminGuard } from "../tenant/super-admin.guard";
+import { PlanEditorGuard } from "./guards/plan-editor.guard";
 import { SubscriptionsService } from "./subscriptions.service";
 import {
   CreatePlanDto,
@@ -62,7 +63,7 @@ export class SubscriptionsController {
   // ────────────────────────────────────────────────────────────────
 
   @Get("admin/plans")
-  @UseGuards(SuperAdminGuard)
+  @UseGuards(PlanEditorGuard)
   @ApiOperation({ summary: "List all plans" })
   listPlans() {
     return this.subs.listPlans();
@@ -94,13 +95,13 @@ export class SubscriptionsController {
   }
 
   @Get("admin/plans/:id")
-  @UseGuards(SuperAdminGuard)
+  @UseGuards(PlanEditorGuard)
   getPlan(@Param("id", ParseIntPipe) id: number) {
     return this.subs.getPlan(id);
   }
 
   @Patch("admin/plans/:id")
-  @UseGuards(SuperAdminGuard)
+  @UseGuards(PlanEditorGuard)
   updatePlan(
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdatePlanDto,

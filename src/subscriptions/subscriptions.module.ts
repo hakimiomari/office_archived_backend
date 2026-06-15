@@ -8,6 +8,7 @@ import { SubscriptionsService } from "./subscriptions.service";
 import { SubscriptionLimitService } from "./subscription-limit.service";
 import { SubscriptionModuleGuard } from "./guards/subscription-module.guard";
 import { SubscriptionFeatureGuard } from "./guards/subscription-feature.guard";
+import { PlanEditorGuard } from "./guards/plan-editor.guard";
 
 /**
  * @Global so any feature module can inject `SubscriptionLimitService`
@@ -31,12 +32,14 @@ import { SubscriptionFeatureGuard } from "./guards/subscription-feature.guard";
     SubscriptionLimitService,
     SubscriptionModuleGuard,
     SubscriptionFeatureGuard,
+    PlanEditorGuard,
   ],
   exports: [
     SubscriptionsService,
     SubscriptionLimitService,
     SubscriptionModuleGuard,
     SubscriptionFeatureGuard,
+    PlanEditorGuard,
   ],
 })
 export class SubscriptionsModule {}

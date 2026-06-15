@@ -54,6 +54,12 @@ export class SeedService {
       // account approve or reject company upgrade requests from
       // /admin/plan-requests. SUPER_ADMIN bypasses this check.
       { name: 'plan_request.review', group_name: 'subscriptions', label: 'Review Plan Change Requests' },
+      // Lets a non-super-admin staff account edit plan fields
+      // (description, prices) from /admin/plans. SUPER_ADMIN bypasses
+      // this check. Does NOT grant the ability to create or delete
+      // plans, change the module/feature set, or change the per-plan
+      // resource limits — those stay SUPER_ADMIN-only.
+      { name: 'plan.update', group_name: 'subscriptions', label: 'Edit Plan Details & Prices' },
     ];
 
     for (const perm of permissions) {
@@ -191,6 +197,8 @@ export class SeedService {
       name: string;
       description: string;
       sortOrder: number;
+      monthlyPrice: number;
+      yearlyPrice: number;
       modules: string[];
       features: string[];
       limit: {
@@ -206,6 +214,8 @@ export class SeedService {
         name: 'Basic',
         description: 'Core inventory + sales + employees',
         sortOrder: 0,
+        monthlyPrice: 0,
+        yearlyPrice: 0,
         modules: [
           'INVENTORY',
           'SALES',
@@ -228,6 +238,8 @@ export class SeedService {
         name: 'Premium',
         description: 'Adds alerts + stock counts + key reports',
         sortOrder: 1,
+        monthlyPrice: 1000,
+        yearlyPrice: 10000,
         modules: [
           'INVENTORY',
           'SALES',
@@ -256,6 +268,8 @@ export class SeedService {
         name: 'Pro',
         description: 'All modules + accounting + banking + audit logs',
         sortOrder: 2,
+        monthlyPrice: 1500,
+        yearlyPrice: 15000,
         modules: [
           'INVENTORY',
           'SALES',
@@ -295,6 +309,8 @@ export class SeedService {
           name: def.name,
           description: def.description,
           sortOrder: def.sortOrder,
+          monthlyPrice: def.monthlyPrice,
+          yearlyPrice: def.yearlyPrice,
           isActive: true,
         },
         create: {
@@ -302,6 +318,8 @@ export class SeedService {
           name: def.name,
           description: def.description,
           sortOrder: def.sortOrder,
+          monthlyPrice: def.monthlyPrice,
+          yearlyPrice: def.yearlyPrice,
           isActive: true,
         },
       });

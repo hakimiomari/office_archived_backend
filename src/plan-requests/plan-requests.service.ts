@@ -83,28 +83,42 @@ export class PlanRequestsService {
       include: { plan: { select: { id: true, name: true, sortOrder: true } } },
     });
 
-    if (
-      currentSub?.planId === dto.requestedPlanId &&
-      currentSub.billingCycle === dto.billingCycle
-    ) {
-      throw new ConflictException(
-        "You're already on this plan with the same billing cycle",
-      );
-    }
-
-    // Tier rule: a company can only move to a HIGHER-tier plan
-    // (sortOrder) — never downgrade. Same-plan-different-cycle is
-    // allowed (extension / renewal). If no active subscription
-    // exists, any plan is permitted.
+    // Tier + lifecycle rules. A company can only request:
+    //   - a HIGHER-tier plan (upgrade), OR
+    //   - the SAME plan ONLY after the current subscription expires
+    //     (renewal). Same plan with a different cycle while still
+    //     active counts as a re-request and is blocked.
+    // Downgrades are never allowed. With no active subscription,
+    // any plan is permitted.
     if (currentSub && currentSub.plan) {
+      const now = new Date();
+      const isExpired =
+        currentSub.endDate != null &&
+        currentSub.endDate.getTime() <= now.getTime();
+
       const goingToSamePlan = currentSub.planId === dto.requestedPlanId;
       const goingHigher = plan.sortOrder > currentSub.plan.sortOrder;
+
       if (!goingToSamePlan && !goingHigher) {
         throw new ConflictException({
           code: "plan_request.downgrade_not_allowed",
           message:
             `Downgrading from ${currentSub.plan.name} to ${plan.name} ` +
             `isn't allowed. You can only upgrade to a higher-tier plan.`,
+        });
+      }
+
+      if (goingToSamePlan && !isExpired) {
+        const expiryText = currentSub.endDate
+          ? ` You can renew it after ${currentSub.endDate.toISOString().slice(0, 10)}.`
+          : "";
+        throw new ConflictException({
+          code: "plan_request.already_active",
+          message:
+            `You're already on the ${plan.name} plan and it hasn't expired yet.` +
+            expiryText,
+          currentPlan: currentSub.plan.name,
+          currentEndDate: currentSub.endDate,
         });
       }
     }
