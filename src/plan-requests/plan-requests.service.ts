@@ -5,11 +5,11 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { PlanChangeRequestStatus, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { MinioService } from "../minio/minio.service";
-import { effectiveCompanyId, isSuperAdmin } from "../tenant/tenant-context";
+import { isSuperAdmin } from "../tenant/tenant-context";
 import { CreatePlanRequestDto } from "./dto/create-plan-request.dto";
 import { ListPlanRequestsDto } from "./dto/list-plan-requests.dto";
 
@@ -80,6 +80,7 @@ export class PlanRequestsService {
     const currentSub = await this.prisma.companySubscription.findFirst({
       where: { companyId: actor.companyId, status: "ACTIVE", deletedAt: null },
       orderBy: { startDate: "desc" },
+      include: { plan: { select: { id: true, name: true, sortOrder: true } } },
     });
 
     if (
@@ -89,6 +90,23 @@ export class PlanRequestsService {
       throw new ConflictException(
         "You're already on this plan with the same billing cycle",
       );
+    }
+
+    // Tier rule: a company can only move to a HIGHER-tier plan
+    // (sortOrder) — never downgrade. Same-plan-different-cycle is
+    // allowed (extension / renewal). If no active subscription
+    // exists, any plan is permitted.
+    if (currentSub && currentSub.plan) {
+      const goingToSamePlan = currentSub.planId === dto.requestedPlanId;
+      const goingHigher = plan.sortOrder > currentSub.plan.sortOrder;
+      if (!goingToSamePlan && !goingHigher) {
+        throw new ConflictException({
+          code: "plan_request.downgrade_not_allowed",
+          message:
+            `Downgrading from ${currentSub.plan.name} to ${plan.name} ` +
+            `isn't allowed. You can only upgrade to a higher-tier plan.`,
+        });
+      }
     }
 
     // Single-pending invariant — at most one PENDING per company.
